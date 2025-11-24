@@ -1,7 +1,7 @@
 const FO = 'Atlantic/Faroe';
 
 async function load() {
-  const res = await fetch('../data/matches.json', { cache: 'no-store' });
+const res = await fetch('data/matches.json', { cache: 'no-store' });
   const rows = await res.json();
   window.__RAW__ = rows;
   initFilters(rows);
