@@ -1,0 +1,7 @@
+body { font-family: system-ui, Arial, sans-serif; margin: 16px; }
+header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.controls label { margin-right: 12px; }
+#tbl { border-collapse: collapse; width: 100%; margin-top: 12px; }
+#tbl th, #tbl td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+#tbl th { position: sticky; top: 0; background: #f6f6f6; }
+#note { margin: 8px 0; color: #666; }
