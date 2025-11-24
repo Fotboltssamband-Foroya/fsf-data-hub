@@ -1,0 +1,33 @@
+name: Fetch FSF data
+
+on:
+  schedule:
+    - cron: "30 4 * * *"   # daily 04:30 UTC (change if you like)
+  workflow_dispatch: {}     # adds the "Run workflow" button
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Fetch API -> data/matches.json
+        env:
+          FSF_API_BASE: ${{ secrets.FSF_API_BASE }}
+        run: python scripts/etl.py
+
+      - name: Commit & push data
+        run: |
+          git config user.name "fsf-bot"
+          git config user.email "fsf-bot@users.noreply.github.com"
+          git add data/matches.json
+          git commit -m "Update matches $(date -u +%F-%T)" || echo "No changes"
+          git push
