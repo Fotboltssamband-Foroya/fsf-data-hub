@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>FSF Data Hub</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <header>
+    <h1>FSF Data Hub</h1>
+    <div class="controls">
+      <label>Competition:
+        <select id="competition"></select>
+      </label>
+      <label>Team (ID or name):
+        <input id="team" placeholder="e.g. 8612 or HB a"/>
+      </label>
+      <label>Stadium (facility):
+        <input id="facility" placeholder="e.g. Tórsvøllur"/>
+      </label>
+      <label>Date:
+        <input id="date" type="date"/>
+      </label>
+      <label>View:
+        <select id="view">
+          <option value="weekday">Weekday by team</option>
+          <option value="stadium-day">Matches at stadium on date</option>
+        </select>
+      </label>
+      <button id="apply">Apply</button>
+      <button id="copy">Copy table</button>
+      <button id="csv">Download CSV</button>
+      <button id="png">Save as image</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="note"></div>
+    <table id="tbl">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
