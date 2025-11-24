@@ -1,5 +1,11 @@
 const FO = 'Atlantic/Faroe';
-
+function foISODate(ms){
+  if (!ms) return '';
+  const d = new Date(Number(ms));
+  const opt = { timeZone: FO, year:'numeric', month:'2-digit', day:'2-digit' };
+  const [m,day,yr] = new Intl.DateTimeFormat('en-GB', opt).format(d).split('/');
+  return `${yr}-${m}-${day}`; // YYYY-MM-DD in FO time
+}
 async function load() {
 const res = await fetch('data/matches.json', { cache: 'no-store' });
   const rows = await res.json();
@@ -20,10 +26,15 @@ function applyFilters(rows){
   const comp = document.getElementById('competition').value.trim();
   const team = document.getElementById('team').value.trim().toLowerCase();
   const facility = document.getElementById('facility').value.trim().toLowerCase();
-  const dateStr = document.getElementById('date').value;
+  const fromStr = document.getElementById('dateFrom').value; // yyyy-mm-dd
+  const toStr   = document.getElementById('dateTo').value;   // yyyy-mm-dd
 
   let out = rows.slice();
-  if (comp) out = out.filter(r => (r.competitionType||'').trim() === comp);
+
+  if (comp) {
+    out = out.filter(r => (r.competitionType||'').trim() === comp);
+  }
+
   if (team) {
     out = out.filter(r =>
       String(r.homeTeam||'').toLowerCase().includes(team) ||
@@ -31,13 +42,25 @@ function applyFilters(rows){
       String(r.matchDescription||'').toLowerCase().includes(team)
     );
   }
+
   if (facility) {
     out = out.filter(r =>
       String(r.facility||'').toLowerCase().includes(facility) ||
       String(r.facilityPlaceName||'').toLowerCase().includes(facility)
     );
   }
-  if (dateStr) out = out.filter(r => sameFODate(r.matchDate, dateStr));
+
+  // Date range in FO time (inclusive)
+  if (fromStr || toStr) {
+    out = out.filter(r => {
+      if (!r.matchDate) return false;
+      const d = foISODate(r.matchDate); // YYYY-MM-DD
+      if (fromStr && d < fromStr) return false;
+      if (toStr && d > toStr) return false;
+      return true;
+    });
+  }
+
   return out;
 }
 
