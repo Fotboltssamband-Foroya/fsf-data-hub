@@ -1,189 +1,80 @@
-const FO = 'Atlantic/Faroe';
-
-// Get YYYY-MM-DD in FO time for a matchDate (ms since epoch)
-function foISODate(ms){
-  if (!ms) return '';
-  const d = new Date(Number(ms));
-  const opt = { timeZone: FO, year: 'numeric', month: '2-digit', day: '2-digit' };
-  const [m, day, yr] = new Intl.DateTimeFormat('en-GB', opt).format(d).split('/');
-  return `${yr}-${m}-${day}`;
+async function loadData() {
+  const res = await fetch("data/licenses.json", { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("licenses.json not found yet (run the workflow)");
+  }
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error("licenses.json must be an array");
+  }
+  return data;
 }
 
-// Format FO datetime string for table
-function foDateTime(ms){
-  if (!ms) return '';
-  const d = new Date(Number(ms));
-  const optD = { timeZone: FO, year: 'numeric', month: '2-digit', day: '2-digit' };
-  const optT = { timeZone: FO, hour: '2-digit', minute: '2-digit', hour12: false };
-  const dstr = new Intl.DateTimeFormat('en-GB', optD).format(d).split('/').reverse().join('-');
-  const tstr = new Intl.DateTimeFormat('en-GB', optT).format(d);
-  return `${dstr} ${tstr}`;
-}
+function buildTable(rows) {
+  const thead = document.querySelector("#tbl thead");
+  const tbody = document.querySelector("#tbl tbody");
 
-async function load() {
-  const res = await fetch('data/matches.json', { cache: 'no-store' });
-  const rows = await res.json();
-  window.__RAW__ = rows;
-  initFilters(rows);
-  render();
-}
+  tbody.innerHTML = "";
+  thead.innerHTML = "";
 
-function uniq(arr){ return [...new Set(arr)].filter(Boolean).sort(); }
-
-function initFilters(rows){
-  const comps = uniq(rows.map(r => (r.competitionType || '').trim()));
-  const sel = document.getElementById('competition');
-  sel.innerHTML = '<option value="">(all)</option>' + comps.map(c => `<option>${c}</option>`).join('');
-}
-
-// Apply competition / team / facility / date-range filters
-function applyFilters(rows){
-  const comp      = document.getElementById('competition').value.trim();
-  const team      = document.getElementById('team').value.trim().toLowerCase();
-  const facility  = document.getElementById('facility').value.trim().toLowerCase();
-  const fromInput = document.getElementById('dateFrom');
-  const toInput   = document.getElementById('dateTo');
-
-  const fromStr = fromInput ? fromInput.value : ''; // yyyy-mm-dd
-  const toStr   = toInput   ? toInput.value   : ''; // yyyy-mm-dd
-
-  let out = rows.slice();
-
-  if (comp) {
-    out = out.filter(r => (r.competitionType || '').trim() === comp);
+  if (rows.length === 0) {
+    document.getElementById("note").textContent = "No rows to display.";
+    return;
   }
 
-  if (team) {
-    out = out.filter(r =>
-      String(r.homeTeam || '').toLowerCase().includes(team) ||
-      String(r.awayTeam || '').toLowerCase().includes(team) ||
-      String(r.matchDescription || '').toLowerCase().includes(team)
-    );
-  }
+  const columns = Object.keys(rows[0]);
 
-  if (facility) {
-    out = out.filter(r =>
-      String(r.facility || '').toLowerCase().includes(facility) ||
-      String(r.facilityPlaceName || '').toLowerCase().includes(facility)
-    );
-  }
-
-  // Date range in FO time (inclusive)
-  if (fromStr || toStr) {
-    out = out.filter(r => {
-      if (!r.matchDate) return false;
-      const d = foISODate(r.matchDate); // YYYY-MM-DD
-      if (fromStr && d < fromStr) return false;
-      if (toStr   && d > toStr)   return false;
-      return true;
-    });
-  }
-
-  return out;
-}
-
-function render(){
-  const rows = applyFilters(window.__RAW__ || []);
-  const view = document.getElementById('view').value;
-  if (view === 'weekday') return renderWeekdayByTeam(rows);
-  if (view === 'stadium-day') return renderStadiumRange(rows);
-}
-
-function renderWeekdayByTeam(rows){
-  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const map = new Map();
-
-  rows.forEach(r => {
-    if (!r.matchDate) return;
-    const dayIdx = new Date(
-      new Date(Number(r.matchDate)).toLocaleString('en-US', { timeZone: FO })
-    ).getDay();
-
-    [['homeTeam'],['awayTeam']].forEach(([k]) => {
-      const id = String(r[k] || '').trim();
-      if (!id) return;
-      if (!map.has(id)) map.set(id, Array(7).fill(0));
-      map.get(id)[dayIdx] += 1;
-    });
+  // Header
+  const trh = document.createElement("tr");
+  columns.forEach(c => {
+    const th = document.createElement("th");
+    th.textContent = c;
+    trh.appendChild(th);
   });
+  thead.appendChild(trh);
 
-  const thead = document.querySelector('#tbl thead');
-  const tbody = document.querySelector('#tbl tbody');
-  thead.innerHTML = `<tr><th>Team ID</th>${dayNames.map(d => `<th>${d}</th>`).join('')}<th>Total</th></tr>`;
-  tbody.innerHTML = '';
-
-  [...map.entries()].sort((a,b) => a[0].localeCompare(b[0])).forEach(([id,counts]) => {
-    const total = counts.reduce((a,b)=>a+b,0);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${id}</td>${counts.map(n => `<td>${n}</td>`).join('')}<td>${total}</td>`;
+  // Rows
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    columns.forEach(c => {
+      const td = document.createElement("td");
+      td.textContent = r[c] ?? "";
+      tr.appendChild(td);
+    });
     tbody.appendChild(tr);
   });
 
-  document.getElementById('note').textContent =
-    'View: Weekday by team (counts of scheduled matches Mon–Sun in FO time)';
+  document.getElementById("note").textContent =
+    `${rows.length} rows shown.`;
 }
 
-function renderStadiumRange(rows){
-  rows = rows.filter(r => r.matchDate).sort((a,b)=>Number(a.matchDate)-Number(b.matchDate));
+let RAW = [];
 
-  const thead = document.querySelector('#tbl thead');
-  const tbody = document.querySelector('#tbl tbody');
-  thead.innerHTML = `
-    <tr>
-      <th>Time (FO)</th><th>Facility</th><th>Field</th>
-      <th>Home</th><th>Away</th><th>Competition</th><th>Round</th><th>Status</th>
-    </tr>`;
-  tbody.innerHTML = '';
+function applySearch() {
+  const q = document.getElementById("q").value.toLowerCase().trim();
+  if (!q) {
+    buildTable(RAW);
+    return;
+  }
 
-  rows.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${foDateTime(r.matchDate)}</td>
-      <td>${r.facility || ''}</td>
-      <td>${r.field || ''}</td>
-      <td>${r.homeTeam || ''}</td>
-      <td>${r.awayTeam || ''}</td>
-      <td>${(r.competitionType || '').trim()}</td>
-      <td>${r.round ?? ''}</td>
-      <td>${r.matchStatus ?? ''}</td>`;
-    tbody.appendChild(tr);
-  });
+  const filtered = RAW.filter(row =>
+    Object.values(row).some(v =>
+      String(v ?? "").toLowerCase().includes(q)
+    )
+  );
 
-  document.getElementById('note').textContent =
-    'View: Matches at stadium between selected dates (use From/To + Facility)';
+  buildTable(filtered);
 }
 
-// Buttons
-document.getElementById('apply').onclick = render;
+async function init() {
+  try {
+    RAW = await loadData();
+    buildTable(RAW);
+    document.getElementById("apply").onclick = applySearch;
+  } catch (e) {
+    document.getElementById("note").textContent = e.message;
+    console.error(e);
+  }
+}
 
-document.getElementById('copy').onclick = async () => {
-  const table = document.getElementById('tbl');
-  const range = document.createRange();
-  range.selectNode(table);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-  try { await navigator.clipboard.writeText(table.innerText); } catch(e){}
-  sel.removeAllRanges();
-  alert('Table copied (plain text). Paste anywhere.');
-};
-
-document.getElementById('csv').onclick = () => {
-  const rows = [...document.querySelectorAll('#tbl tr')].map(tr =>
-    [...tr.children].map(td => `"${td.innerText.replace(/"/g,'""')}"`).join(',')
-  ).join('\n');
-  const blob = new Blob([rows], {type:'text/csv'});
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'fsf_view.csv' });
-  a.click();
-};
-
-document.getElementById('png').onclick = async () => {
-  const node = document.querySelector('main');
-  const canvas = await html2canvas(node, { scale: 2 });
-  const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'fsf_view.png';
-  a.click();
-};
-
-load();
+init();
