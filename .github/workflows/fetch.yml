@@ -2,18 +2,17 @@ name: Fetch FSF data
 
 on:
   schedule:
-    - cron: "30 4 * * *"   # daily 04:30 UTC
-  workflow_dispatch: {}     # shows the "Run workflow" button
+    - cron: "30 4 * * *"
+  workflow_dispatch: {}
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: false   # we will use our own PAT later
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -23,7 +22,7 @@ jobs:
       - name: Install deps
         run: pip install requests
 
-      - name: Fetch API -> data/matches.json
+      - name: Fetch matches -> docs/data/matches.json
         env:
           FSF_API_BASE: ${{ secrets.FSF_API_BASE }}
         run: python scripts/etl.py
@@ -35,8 +34,7 @@ jobs:
           git config user.name "fsf-bot"
           git config user.email "fsf-bot@users.noreply.github.com"
 
-          git add data/matches.json
-          # If there are no changes, exit gracefully so the job is still green
+          git add docs/data/matches.json
           git commit -m "Update matches $(date -u +%F-%T)" || exit 0
 
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN_PAT}@github.com/Fotboltssamband-Foroya/fsf-data-hub.git
