@@ -1,6 +1,6 @@
 import os, json, time, requests
 
-PAGE_SIZE = 500
+PAGE_SIZE = 250
 BASE = os.getenv("FSF_API_BASE")  # .../run/{page}/{pageSize}/?API_KEY=...
 
 def fetch_all():
