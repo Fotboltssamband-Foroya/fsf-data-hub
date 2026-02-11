@@ -1,80 +1,124 @@
+let RAW = [];
+let VIEW = [];
+
 async function loadData() {
   const res = await fetch("data/matches.json", { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error("licenses.json not found yet (run the workflow)");
-  }
-  const data = await res.json();
-  if (!Array.isArray(data)) {
-    throw new Error("licenses.json must be an array");
-  }
-  return data;
+  RAW = await res.json();
+  VIEW = RAW;
+  buildFilters();
+  render();
 }
 
-function buildTable(rows) {
+/* ---------------- FILTER UI ---------------- */
+
+function unique(field) {
+  return [...new Set(RAW.map(r => r[field]).filter(Boolean))].sort();
+}
+
+function buildFilters() {
+  const controls = document.querySelector(".controls");
+
+  controls.innerHTML = `
+    <input id="team" placeholder="Team name">
+    <input id="stadium" placeholder="Stadium">
+    From <input type="date" id="from">
+    To <input type="date" id="to">
+    <button onclick="apply()">Apply</button>
+    <button onclick="resetView()">Reset</button>
+  `;
+}
+
+/* ---------------- FILTER LOGIC ---------------- */
+
+function apply() {
+  const team = document.getElementById("team").value.toLowerCase();
+  const stadium = document.getElementById("stadium").value.toLowerCase();
+  const from = document.getElementById("from").value;
+  const to = document.getElementById("to").value;
+
+  VIEW = RAW.filter(m => {
+
+    if (team) {
+      const txt = (m.matchDescription || "").toLowerCase();
+      if (!txt.includes(team)) return false;
+    }
+
+    if (stadium) {
+      const txt = (m.facility || "").toLowerCase();
+      if (!txt.includes(stadium)) return false;
+    }
+
+    if (from || to) {
+      const date = new Date(m.matchDate);
+      if (from && date < new Date(from)) return false;
+      if (to && date > new Date(to + "T23:59:59")) return false;
+    }
+
+    return true;
+  });
+
+  render();
+}
+
+function resetView() {
+  VIEW = RAW;
+  render();
+}
+
+/* ---------------- TABLE ---------------- */
+
+function render() {
+
+  const cols = [
+    "competitionType",
+    "matchDescription",
+    "facility",
+    "matchDate",
+    "round"
+  ];
+
   const thead = document.querySelector("#tbl thead");
   const tbody = document.querySelector("#tbl tbody");
 
-  tbody.innerHTML = "";
-  thead.innerHTML = "";
+  thead.innerHTML = `
+    <tr>
+      ${cols.map(c => `<th onclick="sortBy('${c}')">${c}</th>`).join("")}
+    </tr>
+  `;
 
-  if (rows.length === 0) {
-    document.getElementById("note").textContent = "No rows to display.";
-    return;
-  }
-
-  const columns = Object.keys(rows[0]);
-
-  // Header
-  const trh = document.createElement("tr");
-  columns.forEach(c => {
-    const th = document.createElement("th");
-    th.textContent = c;
-    trh.appendChild(th);
-  });
-  thead.appendChild(trh);
-
-  // Rows
-  rows.forEach(r => {
-    const tr = document.createElement("tr");
-    columns.forEach(c => {
-      const td = document.createElement("td");
-      td.textContent = r[c] ?? "";
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
+  tbody.innerHTML = VIEW.map(r => `
+    <tr>
+      <td>${r.competitionType || ""}</td>
+      <td>${r.matchDescription || ""}</td>
+      <td>${r.facility || ""}</td>
+      <td>${formatDate(r.matchDate)}</td>
+      <td>${r.round || ""}</td>
+    </tr>
+  `).join("");
 
   document.getElementById("note").textContent =
-    `${rows.length} rows shown.`;
+    `${VIEW.length} matches shown (of ${RAW.length})`;
 }
 
-let RAW = [];
+/* ---------------- SORT ---------------- */
 
-function applySearch() {
-  const q = document.getElementById("q").value.toLowerCase().trim();
-  if (!q) {
-    buildTable(RAW);
-    return;
-  }
+let SORT_DIR = 1;
 
-  const filtered = RAW.filter(row =>
-    Object.values(row).some(v =>
-      String(v ?? "").toLowerCase().includes(q)
-    )
-  );
-
-  buildTable(filtered);
+function sortBy(field) {
+  SORT_DIR *= -1;
+  VIEW.sort((a,b)=>{
+    if(a[field] > b[field]) return SORT_DIR;
+    if(a[field] < b[field]) return -SORT_DIR;
+    return 0;
+  });
+  render();
 }
 
-async function init() {
-  try {
-    RAW = await loadData();
-    buildTable(RAW);
-    document.getElementById("apply").onclick = applySearch;
-  } catch (e) {
-    document.getElementById("note").textContent = e.message;
-    console.error(e);
-  }
+/* ---------------- UTIL ---------------- */
+
+function formatDate(ms) {
+  if(!ms) return "";
+  return new Date(ms).toLocaleString();
 }
 
-init();
+loadData();
