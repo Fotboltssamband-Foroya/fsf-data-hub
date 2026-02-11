@@ -1,30 +1,49 @@
 import os, json, time, requests
 
-PAGE_SIZE = 250
 BASE = os.getenv("FSF_API_BASE")  # .../run/{page}/{pageSize}/?API_KEY=...
+PAGE_SIZE = 250
+MAX_RETRIES = 6
+
+def get_json(url):
+    delay = 2
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            r = requests.get(url, timeout=120)
+            r.raise_for_status()
+            return r.json()
+        except Exception:
+            if attempt == MAX_RETRIES:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, 30)
 
 def fetch_all():
     if not BASE:
-        raise RuntimeError("Missing env var FSF_MATCHES_API_BASE")
+        raise RuntimeError("Missing env var FSF_API_BASE")
 
     page = 0
     out = []
 
     while True:
         url = BASE.replace("{page}", str(page)).replace("{pageSize}", str(PAGE_SIZE))
-        r = requests.get(url, timeout=90)
-        r.raise_for_status()
-        doc = r.json()
+        doc = get_json(url)
 
-        # COMET report shape: usually {results:[...]}
-        rows = doc.get("results", doc) if isinstance(doc, dict) else doc
-        if not isinstance(rows, list):
-            raise ValueError("Unexpected API response shape (expected list or {results:list})")
+        if not isinstance(doc, dict) or "results" not in doc:
+            raise ValueError("Expected COMET report response with {results, page, lastPage}")
 
+        rows = doc["results"]
         out.extend(rows)
 
-        if len(rows) < PAGE_SIZE:
-            break
+        print(f"Page {doc.get('page')} / {doc.get('lastPage')} -> {len(rows)} rows (total so far {len(out)})")
+
+        # Stop when we reached lastPage
+        if doc.get("lastPage") is not None and doc.get("page") is not None:
+            if int(doc["page"]) >= int(doc["lastPage"]):
+                break
+        else:
+            # fallback: stop on short page
+            if len(rows) < PAGE_SIZE:
+                break
 
         page += 1
         time.sleep(0.2)
@@ -38,7 +57,7 @@ def main():
     with open("docs/data/matches.json", "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False)
 
-    print(f"Wrote {len(rows)} rows to docs/data/matches.json")
+    print(f"Done. Total rows: {len(rows)}")
 
 if __name__ == "__main__":
     main()
