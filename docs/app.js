@@ -1,5 +1,5 @@
 async function loadData() {
-  const res = await fetch("data/licenses.json", { cache: "no-store" });
+  const res = await fetch("data/matches.json", { cache: "no-store" });
   if (!res.ok) {
     throw new Error("licenses.json not found yet (run the workflow)");
   }
