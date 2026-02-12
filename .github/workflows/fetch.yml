@@ -1,13 +1,14 @@
-name: Fetch FSF data
+name: Fetch FSF matches
 
 on:
   schedule:
-    - cron: "30 4 * * *"
-  workflow_dispatch: {}
+    - cron: "30 4 * * *"   # daily 04:30 UTC
+  workflow_dispatch: {}     # manual button
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,7 +25,7 @@ jobs:
 
       - name: Fetch matches -> docs/data/matches.json
         env:
-          FSF_API_BASE: ${{ secrets.FSF_API_BASE }}
+          FSF_MATCHES_API_KEY: ${{ secrets.FSF_MATCHES_API_KEY }}
         run: python scripts/etl.py
 
       - name: Commit & push data
