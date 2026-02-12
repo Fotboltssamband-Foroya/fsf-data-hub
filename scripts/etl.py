@@ -1,31 +1,38 @@
 import os, json, time, requests
 
-BASE = os.getenv("FSF_API_BASE")  # .../run/{page}/{pageSize}/?API_KEY=...
+API_KEY = os.getenv("FSF_MATCHES_API_KEY")
 PAGE_SIZE = 250
 MAX_RETRIES = 6
 
-def get_json(url):
+def get_url(page: int) -> str:
+    return (
+        "https://comet.fsf.fo/data-backend/api/public/areports/run/"
+        f"{page}/{PAGE_SIZE}/?API_KEY={API_KEY}"
+    )
+
+def get_json(url: str):
     delay = 2
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             r = requests.get(url, timeout=120)
             r.raise_for_status()
             return r.json()
-        except Exception:
+        except Exception as e:
             if attempt == MAX_RETRIES:
                 raise
             time.sleep(delay)
             delay = min(delay * 2, 30)
 
 def fetch_all():
-    if not BASE:
-        raise RuntimeError("Missing env var FSF_API_BASE")
+    if not API_KEY:
+        raise RuntimeError("Missing env var FSF_MATCHES_API_KEY")
 
-    page = 0
     out = []
+    page = 0
+    last_page = None
 
     while True:
-        url = BASE.replace("{page}", str(page)).replace("{pageSize}", str(PAGE_SIZE))
+        url = get_url(page)
         doc = get_json(url)
 
         if not isinstance(doc, dict) or "results" not in doc:
@@ -34,16 +41,14 @@ def fetch_all():
         rows = doc["results"]
         out.extend(rows)
 
-        print(f"Page {doc.get('page')} / {doc.get('lastPage')} -> {len(rows)} rows (total so far {len(out)})")
+        # these exist in your matches report JSON
+        page_now = int(doc.get("page", page))
+        last_page = int(doc.get("lastPage", page_now))
 
-        # Stop when we reached lastPage
-        if doc.get("lastPage") is not None and doc.get("page") is not None:
-            if int(doc["page"]) >= int(doc["lastPage"]):
-                break
-        else:
-            # fallback: stop on short page
-            if len(rows) < PAGE_SIZE:
-                break
+        print(f"Page {page_now}/{last_page}: {len(rows)} rows (total {len(out)})")
+
+        if page_now >= last_page:
+            break
 
         page += 1
         time.sleep(0.2)
