@@ -62,7 +62,6 @@ function textMatch(match, q) {
 }
 
 function matchHasAnyTeam(match) {
-  // Use matchDescription for team detection (works well for your naming)
   const desc = norm(match.matchDescription);
   for (const t of selected.teams) {
     if (desc.includes(norm(t))) return true;
@@ -97,6 +96,7 @@ function buildControls() {
 
     <button type="button" onclick="applyFilters()">Apply</button>
     <button type="button" onclick="resetFilters()">Reset</button>
+    <button type="button" onclick="downloadCSV()">Export CSV</button>
   `;
 
   // Close panels when clicking outside
@@ -135,7 +135,7 @@ function buildPanel({ panelId, items, set, onChange }) {
   const panel = document.getElementById(panelId);
   if (!panel) return;
 
-  const safeItems = items.slice(); // copy
+  const safeItems = items.slice();
   panel.innerHTML = `
     <div class="row">
       <input type="text" placeholder="Filter list…" data-filter="1">
@@ -155,6 +155,7 @@ function buildPanel({ panelId, items, set, onChange }) {
   function renderList() {
     const q = norm(filterInput.value);
     const show = safeItems.filter(x => norm(x).includes(q));
+
     listDiv.innerHTML = show.map(x => {
       const checked = set.has(x) ? "checked" : "";
       return `<label><input type="checkbox" data-item="${escapeHtml(x)}" ${checked}> ${escapeHtml(x)}</label>`;
@@ -189,7 +190,6 @@ function buildPanel({ panelId, items, set, onChange }) {
 }
 
 function fillDynamicLists() {
-  // competitions from data
   const comps = uniq(RAW.map(r => r.competitionType));
   buildPanel({
     panelId: "panelComps",
@@ -198,7 +198,6 @@ function fillDynamicLists() {
     onChange: () => updatePickerButtons()
   });
 
-  // stadiums from data (use facility)
   const stadiums = uniq(RAW.map(r => r.facility));
   buildPanel({
     panelId: "panelStadiums",
@@ -218,31 +217,26 @@ function applyFilters() {
   const toStr = document.getElementById("to").value;
 
   VIEW = RAW.filter(m => {
-    // competitions multi-select
     if (selected.comps.size > 0) {
       const c = String(m.competitionType ?? "").trim();
       if (!selected.comps.has(c)) return false;
     }
 
-    // stadiums multi-select
     if (selected.stadiums.size > 0) {
       const s = String(m.facility ?? "").trim();
       if (!selected.stadiums.has(s)) return false;
     }
 
-    // teams multi-select (via matchDescription)
     if (selected.teams.size > 0) {
       if (!matchHasAnyTeam(m)) return false;
     }
 
-    // date range
     if (fromStr || toStr) {
       const d = new Date(Number(m.matchDate));
       if (fromStr && d < new Date(fromStr)) return false;
       if (toStr && d > new Date(toStr + "T23:59:59")) return false;
     }
 
-    // free text search
     if (!textMatch(m, q)) return false;
 
     return true;
@@ -252,12 +246,10 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  // clear sets
   selected.teams.clear();
   selected.comps.clear();
   selected.stadiums.clear();
 
-  // reset fields
   const q = document.getElementById("q");
   const from = document.getElementById("from");
   const to = document.getElementById("to");
@@ -265,7 +257,6 @@ function resetFilters() {
   if (from) from.value = "";
   if (to) to.value = "";
 
-  // rebuild panels to uncheck everything
   buildControls();
   fillDynamicLists();
 
@@ -316,7 +307,6 @@ function sortBy(field) {
     let av = a[field];
     let bv = b[field];
 
-    // sort dates as numbers
     if (field === "matchDate") {
       av = Number(av || 0);
       bv = Number(bv || 0);
@@ -330,6 +320,44 @@ function sortBy(field) {
   render();
 }
 
+/* ---------------- CSV EXPORT ---------------- */
+
+function csvEscape(v) {
+  const s = String(v ?? "");
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadCSV() {
+  // Choose fields you want in the export:
+  const columns = [
+    ["competitionType", "Competition"],
+    ["matchDescription", "Match"],
+    ["facility", "Stadium"],
+    ["matchDate", "Match date (ms)"],
+    ["round", "Round"],
+    ["matchStatus", "Status"]
+  ];
+
+  const header = columns.map(c => csvEscape(c[1])).join(",");
+  const lines = VIEW.map(r => {
+    return columns.map(([key]) => {
+      if (key === "matchDate") return csvEscape(formatDate(r[key])); // export formatted date
+      return csvEscape(r[key]);
+    }).join(",");
+  });
+
+  const csv = [header, ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "fsf_matches_filtered.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 /* ---------------- tiny html helpers ---------------- */
 
 function escapeHtml(s) {
@@ -341,7 +369,6 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-// Because we store data-item with escaped value
 function decodeHtml(s) {
   const txt = document.createElement("textarea");
   txt.innerHTML = s;
