@@ -4,11 +4,26 @@ let VIEW = [];
 async function loadData() {
   const res = await fetch("data/matches.json", { cache: "no-store" });
   RAW = await res.json();
+  fillCompetitionDropdown();
   VIEW = RAW;
   buildFilters();
   render();
 }
 
+function uniq(arr) {
+  return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
+    .map(v => String(v).trim())
+    .sort((a,b) => a.localeCompare(b));
+}
+
+function fillCompetitionDropdown() {
+  const sel = document.getElementById("competition");
+  if (!sel) return;
+
+  const comps = uniq(RAW.map(r => r.competitionType));
+  sel.innerHTML = `<option value="">All competitions</option>` +
+    comps.map(c => `<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join("");
+}
 /* ---------------- FILTER UI ---------------- */
 
 function unique(field) {
@@ -35,9 +50,12 @@ function apply() {
   const stadium = document.getElementById("stadium").value.toLowerCase();
   const from = document.getElementById("from").value;
   const to = document.getElementById("to").value;
+  const comp = document.getElementById("competition").value.trim();
 
   VIEW = RAW.filter(m => {
-
+if (comp) {
+  if (String(m.competitionType || "").trim() !== comp) return false;
+}
     if (team) {
       const txt = (m.matchDescription || "").toLowerCase();
       if (!txt.includes(team)) return false;
