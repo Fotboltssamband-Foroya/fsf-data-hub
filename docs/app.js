@@ -1,20 +1,31 @@
 let RAW = [];
 let VIEW = [];
+let SORT_DIR = 1;
 
-/* ---------------- LOAD DATA ---------------- */
+// Your provided team list (used for multi-select)
+const TEAM_NAMES = [
+  "07 Vestur","AB","B36","B68","B71","EB/Streymur","FC Hoyvík","FC Suðuroy",
+  "HB","ÍF","KÍ","MB","NSÍ","Royn","Skála ÍF","TB","Víkingur"
+];
+
+// Selected filters (multi-select as Sets)
+const selected = {
+  teams: new Set(),
+  comps: new Set(),
+  stadiums: new Set(),
+};
 
 async function loadData() {
   const res = await fetch("data/matches.json", { cache: "no-store" });
   RAW = await res.json();
-
-  buildFilters();            // create filter UI
-  fillCompetitionDropdown(); // populate competition dropdown
-
   VIEW = RAW;
+
+  buildControls();
+  fillDynamicLists(); // competitions + stadiums from RAW
   render();
 }
 
-/* ---------------- HELPERS ---------------- */
+/* ---------------- helpers ---------------- */
 
 function uniq(arr) {
   return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
@@ -22,134 +33,10 @@ function uniq(arr) {
     .sort((a,b) => a.localeCompare(b));
 }
 
-/* ---------------- FILTER UI ---------------- */
-
-function buildFilters() {
-  const controls = document.querySelector(".controls");
-
-  controls.innerHTML = `
-    <input id="team" placeholder="Team name">
-    <input id="stadium" placeholder="Stadium">
-
-    <select id="competition">
-      <option value="">All competitions</option>
-    </select>
-
-    From <input type="date" id="from">
-    To <input type="date" id="to">
-
-    <button onclick="apply()">Apply</button>
-    <button onclick="resetView()">Reset</button>
-  `;
-}
-
-function fillCompetitionDropdown() {
-  const sel = document.getElementById("competition");
-  if (!sel) return;
-
-  const comps = uniq(RAW.map(r => r.competitionType));
-  sel.innerHTML =
-    `<option value="">All competitions</option>` +
-    comps.map(c => `<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join("");
-}
-
-/* ---------------- FILTER LOGIC ---------------- */
-
-function apply() {
-  const team = document.getElementById("team").value.toLowerCase();
-  const stadium = document.getElementById("stadium").value.toLowerCase();
-  const from = document.getElementById("from").value;
-  const to = document.getElementById("to").value;
-  const comp = document.getElementById("competition").value.trim();
-
-  VIEW = RAW.filter(m => {
-
-    if (comp) {
-      if (String(m.competitionType || "").trim() !== comp) return false;
-    }
-
-    if (team) {
-      const txt = (m.matchDescription || "").toLowerCase();
-      if (!txt.includes(team)) return false;
-    }
-
-    if (stadium) {
-      const txt = (m.facility || "").toLowerCase();
-      if (!txt.includes(stadium)) return false;
-    }
-
-    if (from || to) {
-      const date = new Date(Number(m.matchDate));
-      if (from && date < new Date(from)) return false;
-      if (to && date > new Date(to + "T23:59:59")) return false;
-    }
-
-    return true;
-  });
-
-  render();
-}
-
-function resetView() {
-  VIEW = RAW;
-  render();
-}
-
-/* ---------------- TABLE ---------------- */
-
-function render() {
-
-  const cols = [
-    "competitionType",
-    "matchDescription",
-    "facility",
-    "matchDate",
-    "round"
-  ];
-
-  const thead = document.querySelector("#tbl thead");
-  const tbody = document.querySelector("#tbl tbody");
-
-  thead.innerHTML = `
-    <tr>
-      ${cols.map(c => `<th onclick="sortBy('${c}')">${c}</th>`).join("")}
-    </tr>
-  `;
-
-  tbody.innerHTML = VIEW.map(r => `
-    <tr>
-      <td>${r.competitionType || ""}</td>
-      <td>${r.matchDescription || ""}</td>
-      <td>${r.facility || ""}</td>
-      <td>${formatDate(r.matchDate)}</td>
-      <td>${r.round || ""}</td>
-    </tr>
-  `).join("");
-
-  document.getElementById("note").textContent =
-    `${VIEW.length} matches shown (of ${RAW.length})`;
-}
-
-/* ---------------- SORT ---------------- */
-
-let SORT_DIR = 1;
-
-function sortBy(field) {
-  SORT_DIR *= -1;
-
-  VIEW.sort((a,b)=>{
-    if(a[field] > b[field]) return SORT_DIR;
-    if(a[field] < b[field]) return -SORT_DIR;
-    return 0;
-  });
-
-  render();
-}
-
-/* ---------------- UTIL ---------------- */
+function norm(s) { return String(s ?? "").toLowerCase(); }
 
 function formatDate(ms) {
-  if(!ms) return "";
+  if (!ms) return "";
   return new Date(Number(ms)).toLocaleString("en-GB", {
     timeZone: "Atlantic/Faroe",
     year: "numeric",
@@ -161,21 +48,241 @@ function formatDate(ms) {
   });
 }
 
-loadData();function resetView() {
+function textMatch(match, q) {
+  if (!q) return true;
+  const hay = [
+    match.matchDescription,
+    match.competitionType,
+    match.facility,
+    match.facilityPlaceName,
+    match.field,
+    match.country
+  ].map(x => norm(x)).join(" ");
+  return hay.includes(q);
+}
+
+function matchHasAnyTeam(match) {
+  // Use matchDescription for team detection (works well for your naming)
+  const desc = norm(match.matchDescription);
+  for (const t of selected.teams) {
+    if (desc.includes(norm(t))) return true;
+  }
+  return false;
+}
+
+/* ---------------- UI: multi-select panels ---------------- */
+
+function buildControls() {
+  const el = document.querySelector(".controls");
+  el.innerHTML = `
+    <input id="q" type="text" placeholder="Search (free text)">
+
+    <div class="picker" id="pickerTeams">
+      <button type="button" onclick="togglePanel('panelTeams')">Teams (${selected.teams.size})</button>
+      <div class="panel" id="panelTeams"></div>
+    </div>
+
+    <div class="picker" id="pickerComps">
+      <button type="button" onclick="togglePanel('panelComps')">Competitions (${selected.comps.size})</button>
+      <div class="panel" id="panelComps"></div>
+    </div>
+
+    <div class="picker" id="pickerStadiums">
+      <button type="button" onclick="togglePanel('panelStadiums')">Stadiums (${selected.stadiums.size})</button>
+      <div class="panel" id="panelStadiums"></div>
+    </div>
+
+    From <input id="from" type="date">
+    To <input id="to" type="date">
+
+    <button type="button" onclick="applyFilters()">Apply</button>
+    <button type="button" onclick="resetFilters()">Reset</button>
+  `;
+
+  // Close panels when clicking outside
+  document.addEventListener("click", (e) => {
+    const panels = ["panelTeams","panelComps","panelStadiums"].map(id => document.getElementById(id));
+    const pickers = ["pickerTeams","pickerComps","pickerStadiums"].map(id => document.getElementById(id));
+    const clickedInside = pickers.some(p => p && p.contains(e.target));
+    if (!clickedInside) panels.forEach(p => p && p.classList.remove("open"));
+  });
+
+  // Build Team panel from your fixed list
+  buildPanel({
+    panelId: "panelTeams",
+    items: TEAM_NAMES,
+    set: selected.teams,
+    onChange: () => updatePickerButtons()
+  });
+}
+
+function togglePanel(panelId) {
+  const p = document.getElementById(panelId);
+  if (!p) return;
+  p.classList.toggle("open");
+}
+
+function updatePickerButtons() {
+  const btnTeams = document.querySelector("#pickerTeams button");
+  const btnComps = document.querySelector("#pickerComps button");
+  const btnStad = document.querySelector("#pickerStadiums button");
+  if (btnTeams) btnTeams.textContent = `Teams (${selected.teams.size})`;
+  if (btnComps) btnComps.textContent = `Competitions (${selected.comps.size})`;
+  if (btnStad) btnStad.textContent = `Stadiums (${selected.stadiums.size})`;
+}
+
+function buildPanel({ panelId, items, set, onChange }) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+
+  const safeItems = items.slice(); // copy
+  panel.innerHTML = `
+    <div class="row">
+      <input type="text" placeholder="Filter list…" data-filter="1">
+    </div>
+    <div class="actions">
+      <button type="button" data-all="1">Select all</button>
+      <button type="button" data-none="1">Select none</button>
+    </div>
+    <div data-list="1"></div>
+  `;
+
+  const filterInput = panel.querySelector('input[data-filter="1"]');
+  const listDiv = panel.querySelector('div[data-list="1"]');
+  const btnAll = panel.querySelector('button[data-all="1"]');
+  const btnNone = panel.querySelector('button[data-none="1"]');
+
+  function renderList() {
+    const q = norm(filterInput.value);
+    const show = safeItems.filter(x => norm(x).includes(q));
+    listDiv.innerHTML = show.map(x => {
+      const checked = set.has(x) ? "checked" : "";
+      return `<label><input type="checkbox" data-item="${escapeHtml(x)}" ${checked}> ${escapeHtml(x)}</label>`;
+    }).join("");
+
+    listDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener("change", () => {
+        const item = cb.getAttribute("data-item");
+        const real = decodeHtml(item);
+        if (cb.checked) set.add(real);
+        else set.delete(real);
+        onChange();
+      });
+    });
+  }
+
+  filterInput.addEventListener("input", renderList);
+
+  btnAll.addEventListener("click", () => {
+    safeItems.forEach(x => set.add(x));
+    onChange();
+    renderList();
+  });
+
+  btnNone.addEventListener("click", () => {
+    set.clear();
+    onChange();
+    renderList();
+  });
+
+  renderList();
+}
+
+function fillDynamicLists() {
+  // competitions from data
+  const comps = uniq(RAW.map(r => r.competitionType));
+  buildPanel({
+    panelId: "panelComps",
+    items: comps,
+    set: selected.comps,
+    onChange: () => updatePickerButtons()
+  });
+
+  // stadiums from data (use facility)
+  const stadiums = uniq(RAW.map(r => r.facility));
+  buildPanel({
+    panelId: "panelStadiums",
+    items: stadiums,
+    set: selected.stadiums,
+    onChange: () => updatePickerButtons()
+  });
+
+  updatePickerButtons();
+}
+
+/* ---------------- filtering ---------------- */
+
+function applyFilters() {
+  const q = norm(document.getElementById("q").value.trim());
+  const fromStr = document.getElementById("from").value;
+  const toStr = document.getElementById("to").value;
+
+  VIEW = RAW.filter(m => {
+    // competitions multi-select
+    if (selected.comps.size > 0) {
+      const c = String(m.competitionType ?? "").trim();
+      if (!selected.comps.has(c)) return false;
+    }
+
+    // stadiums multi-select
+    if (selected.stadiums.size > 0) {
+      const s = String(m.facility ?? "").trim();
+      if (!selected.stadiums.has(s)) return false;
+    }
+
+    // teams multi-select (via matchDescription)
+    if (selected.teams.size > 0) {
+      if (!matchHasAnyTeam(m)) return false;
+    }
+
+    // date range
+    if (fromStr || toStr) {
+      const d = new Date(Number(m.matchDate));
+      if (fromStr && d < new Date(fromStr)) return false;
+      if (toStr && d > new Date(toStr + "T23:59:59")) return false;
+    }
+
+    // free text search
+    if (!textMatch(m, q)) return false;
+
+    return true;
+  });
+
+  render();
+}
+
+function resetFilters() {
+  // clear sets
+  selected.teams.clear();
+  selected.comps.clear();
+  selected.stadiums.clear();
+
+  // reset fields
+  const q = document.getElementById("q");
+  const from = document.getElementById("from");
+  const to = document.getElementById("to");
+  if (q) q.value = "";
+  if (from) from.value = "";
+  if (to) to.value = "";
+
+  // rebuild panels to uncheck everything
+  buildControls();
+  fillDynamicLists();
+
   VIEW = RAW;
   render();
 }
 
-/* ---------------- TABLE ---------------- */
+/* ---------------- table + sorting ---------------- */
 
 function render() {
-
   const cols = [
-    "competitionType",
-    "matchDescription",
-    "facility",
-    "matchDate",
-    "round"
+    { key: "competitionType", label: "Competition" },
+    { key: "matchDescription", label: "Match" },
+    { key: "facility", label: "Stadium" },
+    { key: "matchDate", label: "Date (FO)" },
+    { key: "round", label: "Round" },
+    { key: "matchStatus", label: "Status" }
   ];
 
   const thead = document.querySelector("#tbl thead");
@@ -183,17 +290,18 @@ function render() {
 
   thead.innerHTML = `
     <tr>
-      ${cols.map(c => `<th onclick="sortBy('${c}')">${c}</th>`).join("")}
+      ${cols.map(c => `<th onclick="sortBy('${c.key}')">${c.label}</th>`).join("")}
     </tr>
   `;
 
   tbody.innerHTML = VIEW.map(r => `
     <tr>
-      <td>${r.competitionType || ""}</td>
-      <td>${r.matchDescription || ""}</td>
-      <td>${r.facility || ""}</td>
-      <td>${formatDate(r.matchDate)}</td>
-      <td>${r.round || ""}</td>
+      <td>${escapeHtml(r.competitionType || "")}</td>
+      <td>${escapeHtml(r.matchDescription || "")}</td>
+      <td>${escapeHtml(r.facility || "")}</td>
+      <td>${escapeHtml(formatDate(r.matchDate))}</td>
+      <td>${escapeHtml(r.round ?? "")}</td>
+      <td>${escapeHtml(r.matchStatus ?? "")}</td>
     </tr>
   `).join("");
 
@@ -201,25 +309,43 @@ function render() {
     `${VIEW.length} matches shown (of ${RAW.length})`;
 }
 
-/* ---------------- SORT ---------------- */
-
-let SORT_DIR = 1;
-
 function sortBy(field) {
   SORT_DIR *= -1;
-  VIEW.sort((a,b)=>{
-    if(a[field] > b[field]) return SORT_DIR;
-    if(a[field] < b[field]) return -SORT_DIR;
+
+  VIEW.sort((a, b) => {
+    let av = a[field];
+    let bv = b[field];
+
+    // sort dates as numbers
+    if (field === "matchDate") {
+      av = Number(av || 0);
+      bv = Number(bv || 0);
+    }
+
+    if (av > bv) return SORT_DIR;
+    if (av < bv) return -SORT_DIR;
     return 0;
   });
+
   render();
 }
 
-/* ---------------- UTIL ---------------- */
+/* ---------------- tiny html helpers ---------------- */
 
-function formatDate(ms) {
-  if(!ms) return "";
-  return new Date(ms).toLocaleString();
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+// Because we store data-item with escaped value
+function decodeHtml(s) {
+  const txt = document.createElement("textarea");
+  txt.innerHTML = s;
+  return txt.value;
 }
 
 loadData();
