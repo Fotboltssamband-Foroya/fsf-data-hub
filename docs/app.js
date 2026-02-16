@@ -15,6 +15,9 @@ const selected = {
   stadiums: new Set(),
 };
 
+// Toggle: filter by Faroe timezone or local timezone
+let USE_FAROE_TZ = true;
+
 async function loadData() {
   const res = await fetch("data/matches.json", { cache: "no-store" });
   RAW = await res.json();
@@ -36,8 +39,8 @@ function uniq(arr) {
 function norm(s) { return String(s ?? "").toLowerCase(); }
 
 /**
- * Display date using your local timezone (Faroe on your Mac).
- * This keeps display and filtering consistent in Safari.
+ * Display date using your local timezone.
+ * (We can also add a display toggle later if you want.)
  */
 function formatDate(ms) {
   if (!ms) return "";
@@ -52,8 +55,7 @@ function formatDate(ms) {
 }
 
 /**
- * Convert timestamp -> YYYY-MM-DD in LOCAL timezone (your Mac, Faroe).
- * This fixes the “00:00 shows as previous day when filtering” bug.
+ * Convert timestamp -> YYYY-MM-DD in LOCAL timezone (device timezone).
  */
 function localDateKey(ms) {
   if (!ms) return "";
@@ -61,7 +63,30 @@ function localDateKey(ms) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`; // YYYY-MM-DD
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Convert timestamp -> YYYY-MM-DD in Atlantic/Faroe (locked timezone).
+ */
+function faroeDateKey(ms) {
+  if (!ms) return "";
+  const dt = new Date(Number(ms));
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Atlantic/Faroe",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(dt);
+
+  const y = parts.find(p => p.type === "year")?.value ?? "";
+  const m = parts.find(p => p.type === "month")?.value ?? "";
+  const d = parts.find(p => p.type === "day")?.value ?? "";
+  return `${y}-${m}-${d}`;
+}
+
+function dateKey(ms) {
+  return USE_FAROE_TZ ? faroeDateKey(ms) : localDateKey(ms);
 }
 
 function textMatch(match, q) {
@@ -92,6 +117,11 @@ function buildControls() {
   el.innerHTML = `
     <input id="q" type="text" placeholder="Search (free text)">
 
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input id="tzToggle" type="checkbox" checked>
+      Use Faroe time
+    </label>
+
     <div class="picker" id="pickerTeams">
       <button type="button" onclick="togglePanel('panelTeams')">Teams (${selected.teams.size})</button>
       <div class="panel" id="panelTeams"></div>
@@ -114,6 +144,13 @@ function buildControls() {
     <button type="button" onclick="resetFilters()">Reset</button>
     <button type="button" onclick="downloadCSV()">Export CSV</button>
   `;
+
+  const tz = document.getElementById("tzToggle");
+  tz.addEventListener("change", () => {
+    USE_FAROE_TZ = tz.checked;
+    // If filters are set, re-apply; otherwise just re-render note
+    applyFilters();
+  });
 
   // Close panels when clicking outside
   document.addEventListener("click", (e) => {
@@ -246,9 +283,8 @@ function applyFilters() {
       if (!matchHasAnyTeam(m)) return false;
     }
 
-    // ✅ Date range using LOCAL date key (fixes 00:00 issue)
     if (fromStr || toStr) {
-      const key = localDateKey(m.matchDate);
+      const key = dateKey(m.matchDate);
       if (!key) return false;
       if (fromStr && key < fromStr) return false;
       if (toStr && key > toStr) return false;
@@ -313,8 +349,9 @@ function render() {
     </tr>
   `).join("");
 
+  const tzLabel = USE_FAROE_TZ ? "Faroe time" : "Local time";
   document.getElementById("note").textContent =
-    `${VIEW.length} matches shown (of ${RAW.length})`;
+    `${VIEW.length} matches shown (of ${RAW.length}) — date filter: ${tzLabel}`;
 }
 
 function sortBy(field) {
