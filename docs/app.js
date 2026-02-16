@@ -21,7 +21,7 @@ async function loadData() {
   VIEW = RAW;
 
   buildControls();
-  fillDynamicLists(); // competitions + stadiums from RAW
+  fillDynamicLists();
   render();
 }
 
@@ -35,10 +35,13 @@ function uniq(arr) {
 
 function norm(s) { return String(s ?? "").toLowerCase(); }
 
+/**
+ * Display date using your local timezone (Faroe on your Mac).
+ * This keeps display and filtering consistent in Safari.
+ */
 function formatDate(ms) {
   if (!ms) return "";
   return new Date(Number(ms)).toLocaleString("en-GB", {
-    timeZone: "Atlantic/Faroe",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -49,23 +52,16 @@ function formatDate(ms) {
 }
 
 /**
- * Returns YYYY-MM-DD for a timestamp, in Atlantic/Faroe.
- * This avoids issues where 00:00 or timezone offsets push it outside the chosen range.
+ * Convert timestamp -> YYYY-MM-DD in LOCAL timezone (your Mac, Faroe).
+ * This fixes the “00:00 shows as previous day when filtering” bug.
  */
-function foDateKey(ms) {
-  if (!ms) return ""; // missing / 0
-  const dt = new Date(Number(ms));
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Atlantic/Faroe",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(dt);
-
-  const y = parts.find(p => p.type === "year")?.value ?? "";
-  const m = parts.find(p => p.type === "month")?.value ?? "";
-  const d = parts.find(p => p.type === "day")?.value ?? "";
-  return `${y}-${m}-${d}`; // YYYY-MM-DD
+function localDateKey(ms) {
+  if (!ms) return "";
+  const d = new Date(Number(ms));
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`; // YYYY-MM-DD
 }
 
 function textMatch(match, q) {
@@ -127,7 +123,6 @@ function buildControls() {
     if (!clickedInside) panels.forEach(p => p && p.classList.remove("open"));
   });
 
-  // Build Team panel from your fixed list
   buildPanel({
     panelId: "panelTeams",
     items: TEAM_NAMES,
@@ -237,32 +232,28 @@ function applyFilters() {
   const toStr = document.getElementById("to").value;     // YYYY-MM-DD
 
   VIEW = RAW.filter(m => {
-    // competitions multi-select
     if (selected.comps.size > 0) {
       const c = String(m.competitionType ?? "").trim();
       if (!selected.comps.has(c)) return false;
     }
 
-    // stadiums multi-select
     if (selected.stadiums.size > 0) {
       const s = String(m.facility ?? "").trim();
       if (!selected.stadiums.has(s)) return false;
     }
 
-    // teams multi-select (via matchDescription)
     if (selected.teams.size > 0) {
       if (!matchHasAnyTeam(m)) return false;
     }
 
-    // date range — compare by YYYY-MM-DD in Atlantic/Faroe
+    // ✅ Date range using LOCAL date key (fixes 00:00 issue)
     if (fromStr || toStr) {
-      const key = foDateKey(m.matchDate);
-      if (!key) return false; // if no matchDate, exclude when filtering by date
+      const key = localDateKey(m.matchDate);
+      if (!key) return false;
       if (fromStr && key < fromStr) return false;
       if (toStr && key > toStr) return false;
     }
 
-    // free text search
     if (!textMatch(m, q)) return false;
 
     return true;
@@ -297,7 +288,7 @@ function render() {
     { key: "competitionType", label: "Competition" },
     { key: "matchDescription", label: "Match" },
     { key: "facility", label: "Stadium" },
-    { key: "matchDate", label: "Date (FO)" },
+    { key: "matchDate", label: "Date" },
     { key: "round", label: "Round" },
     { key: "matchStatus", label: "Status" }
   ];
@@ -333,7 +324,6 @@ function sortBy(field) {
     let av = a[field];
     let bv = b[field];
 
-    // sort dates as numbers
     if (field === "matchDate") {
       av = Number(av || 0);
       bv = Number(bv || 0);
@@ -360,7 +350,7 @@ function downloadCSV() {
     ["competitionType", "Competition"],
     ["matchDescription", "Match"],
     ["facility", "Stadium"],
-    ["matchDate", "Match date (FO)"],
+    ["matchDate", "Match date"],
     ["round", "Round"],
     ["matchStatus", "Status"]
   ];
