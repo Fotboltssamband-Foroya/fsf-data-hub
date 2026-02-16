@@ -7,18 +7,26 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <h1>FSF – Allir dystir</h1>
+  <div class="container">
+    <header>
+      <div>
+        <h1>FSF – Allir dystir</h1>
+        <div class="sub">Leita, filtrera og tak út úrslit (CSV) við einum klikki.</div>
+      </div>
+    </header>
 
-  <!-- app.js fills controls here -->
-  <div class="controls"></div>
+    <div class="controls"></div>
 
-  <p id="note"></p>
+    <p id="note"></p>
 
-  <table id="tbl">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+    <div class="tableWrap">
+      <table id="tbl">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
-  <script src="app.js"></script>
+    <script src="app.js"></script>
+  </div>
 </body>
 </html>
