@@ -48,6 +48,26 @@ function formatDate(ms) {
   });
 }
 
+/**
+ * Returns YYYY-MM-DD for a timestamp, in Atlantic/Faroe.
+ * This avoids issues where 00:00 or timezone offsets push it outside the chosen range.
+ */
+function foDateKey(ms) {
+  if (!ms) return ""; // missing / 0
+  const dt = new Date(Number(ms));
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Atlantic/Faroe",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(dt);
+
+  const y = parts.find(p => p.type === "year")?.value ?? "";
+  const m = parts.find(p => p.type === "month")?.value ?? "";
+  const d = parts.find(p => p.type === "day")?.value ?? "";
+  return `${y}-${m}-${d}`; // YYYY-MM-DD
+}
+
 function textMatch(match, q) {
   if (!q) return true;
   const hay = [
@@ -213,30 +233,36 @@ function fillDynamicLists() {
 
 function applyFilters() {
   const q = norm(document.getElementById("q").value.trim());
-  const fromStr = document.getElementById("from").value;
-  const toStr = document.getElementById("to").value;
+  const fromStr = document.getElementById("from").value; // YYYY-MM-DD
+  const toStr = document.getElementById("to").value;     // YYYY-MM-DD
 
   VIEW = RAW.filter(m => {
+    // competitions multi-select
     if (selected.comps.size > 0) {
       const c = String(m.competitionType ?? "").trim();
       if (!selected.comps.has(c)) return false;
     }
 
+    // stadiums multi-select
     if (selected.stadiums.size > 0) {
       const s = String(m.facility ?? "").trim();
       if (!selected.stadiums.has(s)) return false;
     }
 
+    // teams multi-select (via matchDescription)
     if (selected.teams.size > 0) {
       if (!matchHasAnyTeam(m)) return false;
     }
 
+    // date range — compare by YYYY-MM-DD in Atlantic/Faroe
     if (fromStr || toStr) {
-      const d = new Date(Number(m.matchDate));
-      if (fromStr && d < new Date(fromStr)) return false;
-      if (toStr && d > new Date(toStr + "T23:59:59")) return false;
+      const key = foDateKey(m.matchDate);
+      if (!key) return false; // if no matchDate, exclude when filtering by date
+      if (fromStr && key < fromStr) return false;
+      if (toStr && key > toStr) return false;
     }
 
+    // free text search
     if (!textMatch(m, q)) return false;
 
     return true;
@@ -307,6 +333,7 @@ function sortBy(field) {
     let av = a[field];
     let bv = b[field];
 
+    // sort dates as numbers
     if (field === "matchDate") {
       av = Number(av || 0);
       bv = Number(bv || 0);
@@ -329,12 +356,11 @@ function csvEscape(v) {
 }
 
 function downloadCSV() {
-  // Choose fields you want in the export:
   const columns = [
     ["competitionType", "Competition"],
     ["matchDescription", "Match"],
     ["facility", "Stadium"],
-    ["matchDate", "Match date (ms)"],
+    ["matchDate", "Match date (FO)"],
     ["round", "Round"],
     ["matchStatus", "Status"]
   ];
@@ -342,7 +368,7 @@ function downloadCSV() {
   const header = columns.map(c => csvEscape(c[1])).join(",");
   const lines = VIEW.map(r => {
     return columns.map(([key]) => {
-      if (key === "matchDate") return csvEscape(formatDate(r[key])); // export formatted date
+      if (key === "matchDate") return csvEscape(formatDate(r.matchDate));
       return csvEscape(r[key]);
     }).join(",");
   });
