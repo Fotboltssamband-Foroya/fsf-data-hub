@@ -5,6 +5,9 @@ on:
     - cron: "30 4 * * *"   # daily 04:30 UTC
   workflow_dispatch: {}     # manual button
 
+permissions:
+  contents: write
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -12,8 +15,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -29,8 +30,6 @@ jobs:
         run: python scripts/etl.py
 
       - name: Commit & push data
-        env:
-          GITHUB_TOKEN_PAT: ${{ secrets.GH_PAT_FSFDATA }}
         run: |
           git config user.name "fsf-bot"
           git config user.email "fsf-bot@users.noreply.github.com"
@@ -38,5 +37,4 @@ jobs:
           git add docs/data/matches.json
           git commit -m "Update matches $(date -u +%F-%T)" || exit 0
 
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN_PAT}@github.com/Fotboltssamband-Foroya/fsf-data-hub.git
           git push origin HEAD:main
