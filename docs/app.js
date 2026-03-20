@@ -1,13 +1,14 @@
 let RAW = [];
 let GROUPED = [];
 let VIEW = [];
-let SORT_DIR = 1;
 
+// Your provided team list (used for multi-select)
 const TEAM_NAMES = [
   "07 Vestur","AB","B36","B68","B71","EB/Streymur","FC Hoyvík","FC Suðuroy",
   "HB","ÍF","KÍ","MB","NSÍ","Royn","Skála ÍF","TB","Víkingur"
 ];
 
+// Selected filters (multi-select as Sets)
 const selected = {
   teams: new Set(),
   comps: new Set(),
@@ -15,6 +16,18 @@ const selected = {
 };
 
 let USE_FAROE_TZ = true;
+
+// Sort config
+const SORT_FIELDS = [
+  { key: "", label: "(none)" },
+  { key: "competitionName", label: "Competition" },
+  { key: "weekday", label: "Weekday" },
+  { key: "matchText", label: "Teams" },
+  { key: "facility", label: "Stadium" },
+  { key: "matchDate", label: "Date" },
+  { key: "roundsText", label: "Rounds" },
+  { key: "statusText", label: "Status" }
+];
 
 async function loadData() {
   const res = await fetch("data/matches.json", { cache: "no-store" });
@@ -159,6 +172,20 @@ function textMatch(group, q) {
   return hay.includes(q);
 }
 
+function compareValues(a, b, direction) {
+  const dir = direction === "desc" ? -1 : 1;
+
+  if (a === b) return 0;
+  if (a === null || a === undefined) return 1 * dir;
+  if (b === null || b === undefined) return -1 * dir;
+
+  if (typeof a === "number" && typeof b === "number") {
+    return (a - b) * dir;
+  }
+
+  return String(a).localeCompare(String(b)) * dir;
+}
+
 /* ---------------- grouping ---------------- */
 
 function rebuildGroupedData() {
@@ -174,7 +201,7 @@ function rebuildGroupedData() {
     if (!map.has(groupKey)) {
       map.set(groupKey, {
         competitionId: compId,
-        competitionName: String(row.name ?? row.competitionType ?? "").trim(), // full comp name first
+        competitionName: String(row.name ?? row.competitionType ?? "").trim(),
         facility: stadium,
         matchDate: row.matchDate,
         dateKey: dk,
@@ -229,6 +256,9 @@ function rebuildGroupedData() {
 
 function buildControls() {
   const el = document.querySelector(".controls");
+
+  const sortOptions = SORT_FIELDS.map(f => `<option value="${f.key}">${f.label}</option>`).join("");
+
   el.innerHTML = `
     <input id="q" type="text" placeholder="Search (free text)">
 
@@ -255,10 +285,60 @@ function buildControls() {
     From <input id="from" type="date">
     To <input id="to" type="date">
 
+    <div class="picker">
+      <button type="button" onclick="togglePanel('panelSort')">Sort</button>
+      <div class="panel" id="panelSort">
+        <div class="row">
+          <strong>Sort 1</strong>
+        </div>
+        <div class="row">
+          <select id="sort1Field">${sortOptions}</select>
+          <select id="sort1Dir">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <strong>Sort 2</strong>
+        </div>
+        <div class="row">
+          <select id="sort2Field">${sortOptions}</select>
+          <select id="sort2Dir">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <strong>Sort 3</strong>
+        </div>
+        <div class="row">
+          <select id="sort3Field">${sortOptions}</select>
+          <select id="sort3Dir">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
+
+        <div class="actions">
+          <button type="button" onclick="applyFilters()">Apply sorting</button>
+        </div>
+      </div>
+    </div>
+
     <button type="button" onclick="applyFilters()">Apply</button>
     <button type="button" onclick="resetFilters()">Reset</button>
     <button type="button" onclick="downloadCSV()">Export CSV</button>
   `;
+
+  // Set default sort
+  document.getElementById("sort1Field").value = "matchDate";
+  document.getElementById("sort1Dir").value = "asc";
+  document.getElementById("sort2Field").value = "facility";
+  document.getElementById("sort2Dir").value = "asc";
+  document.getElementById("sort3Field").value = "competitionName";
+  document.getElementById("sort3Dir").value = "asc";
 
   const tz = document.getElementById("tzToggle");
   tz.addEventListener("change", () => {
@@ -270,10 +350,15 @@ function buildControls() {
   });
 
   document.addEventListener("click", (e) => {
-    const panels = ["panelTeams","panelComps","panelStadiums"].map(id => document.getElementById(id));
+    const panels = ["panelTeams","panelComps","panelStadiums","panelSort"].map(id => document.getElementById(id));
     const pickers = ["pickerTeams","pickerComps","pickerStadiums"].map(id => document.getElementById(id));
-    const clickedInside = pickers.some(p => p && p.contains(e.target));
-    if (!clickedInside) panels.forEach(p => p && p.classList.remove("open"));
+    const sortPanel = document.getElementById("panelSort");
+    const clickedInsidePicker = pickers.some(p => p && p.contains(e.target));
+    const clickedInsideSort = sortPanel && sortPanel.contains(e.target);
+
+    if (!clickedInsidePicker && !clickedInsideSort) {
+      panels.forEach(p => p && p.classList.remove("open"));
+    }
   });
 
   buildPanel({
@@ -375,6 +460,35 @@ function fillDynamicLists() {
   updatePickerButtons();
 }
 
+/* ---------------- sorting ---------------- */
+
+function applySort(data) {
+  const sortConfig = [
+    {
+      field: document.getElementById("sort1Field")?.value || "",
+      dir: document.getElementById("sort1Dir")?.value || "asc"
+    },
+    {
+      field: document.getElementById("sort2Field")?.value || "",
+      dir: document.getElementById("sort2Dir")?.value || "asc"
+    },
+    {
+      field: document.getElementById("sort3Field")?.value || "",
+      dir: document.getElementById("sort3Dir")?.value || "asc"
+    }
+  ].filter(x => x.field);
+
+  data.sort((a, b) => {
+    for (const s of sortConfig) {
+      const result = compareValues(a[s.field], b[s.field], s.dir);
+      if (result !== 0) return result;
+    }
+    return 0;
+  });
+
+  return data;
+}
+
 /* ---------------- filtering ---------------- */
 
 function applyFilters() {
@@ -406,6 +520,7 @@ function applyFilters() {
     return true;
   });
 
+  VIEW = applySort(VIEW);
   render();
 }
 
@@ -443,7 +558,7 @@ function render() {
 
   thead.innerHTML = `
     <tr>
-      ${cols.map(c => `<th onclick="sortBy('${c.key}')">${c.label}</th>`).join("")}
+      ${cols.map(c => `<th>${c.label}</th>`).join("")}
     </tr>
   `;
 
@@ -462,26 +577,6 @@ function render() {
   const tzLabel = USE_FAROE_TZ ? "Faroe time" : "Local time";
   document.getElementById("note").textContent =
     `${VIEW.length} grouped rows shown (from ${RAW.length} original matches) — date filter: ${tzLabel}`;
-}
-
-function sortBy(field) {
-  SORT_DIR *= -1;
-
-  VIEW.sort((a, b) => {
-    let av = a[field];
-    let bv = b[field];
-
-    if (field === "matchDate") {
-      av = Number(av || 0);
-      bv = Number(bv || 0);
-    }
-
-    if (av > bv) return SORT_DIR;
-    if (av < bv) return -SORT_DIR;
-    return 0;
-  });
-
-  render();
 }
 
 /* ---------------- CSV ---------------- */
