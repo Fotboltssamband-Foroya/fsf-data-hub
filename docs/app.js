@@ -133,6 +133,20 @@ function sortMixed(arr) {
   });
 }
 
+function compareValues(a, b, direction) {
+  const dir = direction === "desc" ? -1 : 1;
+
+  if (a === b) return 0;
+  if (a === null || a === undefined) return 1 * dir;
+  if (b === null || b === undefined) return -1 * dir;
+
+  if (typeof a === "number" && typeof b === "number") {
+    return (a - b) * dir;
+  }
+
+  return String(a).localeCompare(String(b)) * dir;
+}
+
 function extractTeams(matchDescription) {
   if (!matchDescription) return [];
   let left = String(matchDescription);
@@ -170,20 +184,6 @@ function textMatch(group, q) {
     group.statusText
   ].map(norm).join(" ");
   return hay.includes(q);
-}
-
-function compareValues(a, b, direction) {
-  const dir = direction === "desc" ? -1 : 1;
-
-  if (a === b) return 0;
-  if (a === null || a === undefined) return 1 * dir;
-  if (b === null || b === undefined) return -1 * dir;
-
-  if (typeof a === "number" && typeof b === "number") {
-    return (a - b) * dir;
-  }
-
-  return String(a).localeCompare(String(b)) * dir;
 }
 
 /* ---------------- grouping ---------------- */
@@ -285,12 +285,10 @@ function buildControls() {
     From <input id="from" type="date">
     To <input id="to" type="date">
 
-    <div class="picker">
+    <div class="picker" id="pickerSort">
       <button type="button" onclick="togglePanel('panelSort')">Sort</button>
       <div class="panel" id="panelSort">
-        <div class="row">
-          <strong>Sort 1</strong>
-        </div>
+        <div class="row"><strong>Sort 1</strong></div>
         <div class="row">
           <select id="sort1Field">${sortOptions}</select>
           <select id="sort1Dir">
@@ -299,9 +297,7 @@ function buildControls() {
           </select>
         </div>
 
-        <div class="row">
-          <strong>Sort 2</strong>
-        </div>
+        <div class="row"><strong>Sort 2</strong></div>
         <div class="row">
           <select id="sort2Field">${sortOptions}</select>
           <select id="sort2Dir">
@@ -310,9 +306,7 @@ function buildControls() {
           </select>
         </div>
 
-        <div class="row">
-          <strong>Sort 3</strong>
-        </div>
+        <div class="row"><strong>Sort 3</strong></div>
         <div class="row">
           <select id="sort3Field">${sortOptions}</select>
           <select id="sort3Dir">
@@ -332,7 +326,6 @@ function buildControls() {
     <button type="button" onclick="downloadCSV()">Export CSV</button>
   `;
 
-  // Set default sort
   document.getElementById("sort1Field").value = "matchDate";
   document.getElementById("sort1Dir").value = "asc";
   document.getElementById("sort2Field").value = "facility";
@@ -351,12 +344,10 @@ function buildControls() {
 
   document.addEventListener("click", (e) => {
     const panels = ["panelTeams","panelComps","panelStadiums","panelSort"].map(id => document.getElementById(id));
-    const pickers = ["pickerTeams","pickerComps","pickerStadiums"].map(id => document.getElementById(id));
-    const sortPanel = document.getElementById("panelSort");
-    const clickedInsidePicker = pickers.some(p => p && p.contains(e.target));
-    const clickedInsideSort = sortPanel && sortPanel.contains(e.target);
+    const wrappers = ["pickerTeams","pickerComps","pickerStadiums","pickerSort"].map(id => document.getElementById(id));
+    const clickedInside = wrappers.some(w => w && w.contains(e.target));
 
-    if (!clickedInsidePicker && !clickedInsideSort) {
+    if (!clickedInside) {
       panels.forEach(p => p && p.classList.remove("open"));
     }
   });
@@ -497,17 +488,9 @@ function applyFilters() {
   const toStr = document.getElementById("to").value;
 
   VIEW = GROUPED.filter(g => {
-    if (selected.comps.size > 0 && !selected.comps.has(g.competitionName)) {
-      return false;
-    }
-
-    if (selected.stadiums.size > 0 && !selected.stadiums.has(g.facility)) {
-      return false;
-    }
-
-    if (!matchesAnySelectedTeam(g)) {
-      return false;
-    }
+    if (selected.comps.size > 0 && !selected.comps.has(g.competitionName)) return false;
+    if (selected.stadiums.size > 0 && !selected.stadiums.has(g.facility)) return false;
+    if (!matchesAnySelectedTeam(g)) return false;
 
     if (fromStr || toStr) {
       if (!g.dateKey) return false;
@@ -516,7 +499,6 @@ function applyFilters() {
     }
 
     if (!textMatch(g, q)) return false;
-
     return true;
   });
 
@@ -535,6 +517,7 @@ function resetFilters() {
   if (to) to.value = "";
 
   buildControls();
+  rebuildGroupedData();
   fillDynamicLists();
   setDefaultFromToday();
   applyFilters();
@@ -599,12 +582,9 @@ function downloadCSV() {
   ];
 
   const header = columns.map(c => csvEscape(c[1])).join(",");
-  const lines = VIEW.map(r => {
-    return columns.map(([key]) => {
-      if (key === "matchDate") return csvEscape(formatDate(r.matchDate));
-      return csvEscape(r[key]);
-    }).join(",");
-  });
+  const lines = VIEW.map(r =>
+    columns.map(([key]) => key === "matchDate" ? csvEscape(formatDate(r.matchDate)) : csvEscape(r[key])).join(",")
+  );
 
   const csv = [header, ...lines].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
