@@ -1,35 +1,29 @@
 let RAW = [];
+let GROUPED = [];
 let VIEW = [];
 let SORT_DIR = 1;
 
-// Your provided team list (used for multi-select)
 const TEAM_NAMES = [
   "07 Vestur","AB","B36","B68","B71","EB/Streymur","FC Hoyvík","FC Suðuroy",
   "HB","ÍF","KÍ","MB","NSÍ","Royn","Skála ÍF","TB","Víkingur"
 ];
 
-// Selected filters (multi-select as Sets)
 const selected = {
   teams: new Set(),
   comps: new Set(),
   stadiums: new Set(),
 };
 
-// Toggle: filter by Faroe timezone or local timezone
 let USE_FAROE_TZ = true;
 
 async function loadData() {
   const res = await fetch("data/matches.json", { cache: "no-store" });
   RAW = await res.json();
-  VIEW = RAW;
 
   buildControls();
+  rebuildGroupedData();
   fillDynamicLists();
-
-  // ✅ Default "From" = today (in the currently selected timezone)
   setDefaultFromToday();
-
-  // Optional: auto-apply so the table shows from today immediately
   applyFilters();
 }
 
@@ -41,7 +35,9 @@ function uniq(arr) {
     .sort((a,b) => a.localeCompare(b));
 }
 
-function norm(s) { return String(s ?? "").toLowerCase(); }
+function norm(s) {
+  return String(s ?? "").toLowerCase();
+}
 
 function formatDate(ms) {
   if (!ms) return "";
@@ -53,6 +49,16 @@ function formatDate(ms) {
     minute: "2-digit",
     hour12: false
   });
+}
+
+function formatWeekday(ms) {
+  if (!ms) return "";
+  const opts = USE_FAROE_TZ
+    ? { weekday: "long", timeZone: "Atlantic/Faroe" }
+    : { weekday: "long" };
+
+  const day = new Intl.DateTimeFormat("fo-FO", opts).format(new Date(Number(ms)));
+  return day.charAt(0).toUpperCase() + day.slice(1);
 }
 
 function faroeDateKey(ms) {
@@ -91,31 +97,135 @@ function todayKey() {
 function setDefaultFromToday() {
   const from = document.getElementById("from");
   if (!from) return;
-  from.value = todayKey(); // YYYY-MM-DD
+  from.value = todayKey();
 }
 
-function textMatch(match, q) {
-  if (!q) return true;
-  const hay = [
-    match.matchDescription,
-    match.competitionType,
-    match.facility,
-    match.facilityPlaceName,
-    match.field,
-    match.country
-  ].map(x => norm(x)).join(" ");
-  return hay.includes(q);
+function joinHuman(arr) {
+  const clean = arr.filter(Boolean);
+  if (clean.length === 0) return "";
+  if (clean.length === 1) return clean[0];
+  if (clean.length === 2) return `${clean[0]} og ${clean[1]}`;
+  return `${clean.slice(0, -1).join(", ")} og ${clean[clean.length - 1]}`;
 }
 
-function matchHasAnyTeam(match) {
-  const desc = norm(match.matchDescription);
-  for (const t of selected.teams) {
-    if (desc.includes(norm(t))) return true;
+function sortMixed(arr) {
+  return [...arr].sort((a, b) => {
+    const an = Number(a);
+    const bn = Number(b);
+    const aNum = !isNaN(an);
+    const bNum = !isNaN(bn);
+
+    if (aNum && bNum) return an - bn;
+    return String(a).localeCompare(String(b));
+  });
+}
+
+function extractTeams(matchDescription) {
+  if (!matchDescription) return [];
+  let left = String(matchDescription);
+
+  if (left.includes(" -:-")) {
+    left = left.split(" -:-")[0];
+  } else if (left.match(/\s\d+:\d+$/)) {
+    left = left.replace(/\s\d+:\d+$/, "");
+  }
+
+  const parts = left.split(" - ").map(x => x.trim()).filter(Boolean);
+  return parts;
+}
+
+function matchesAnySelectedTeam(group) {
+  if (selected.teams.size === 0) return true;
+
+  for (const selectedTeam of selected.teams) {
+    const sel = norm(selectedTeam);
+    for (const team of group.teamsList) {
+      if (norm(team).includes(sel)) return true;
+    }
   }
   return false;
 }
 
-/* ---------------- UI: multi-select panels ---------------- */
+function textMatch(group, q) {
+  if (!q) return true;
+  const hay = [
+    group.competitionName,
+    group.matchText,
+    group.facility,
+    group.weekday,
+    group.roundsText,
+    group.statusText
+  ].map(norm).join(" ");
+  return hay.includes(q);
+}
+
+/* ---------------- grouping ---------------- */
+
+function rebuildGroupedData() {
+  const map = new Map();
+
+  for (const row of RAW) {
+    const compId = row.id ?? row.competitionId ?? row.name ?? "";
+    const dk = dateKey(row.matchDate);
+    const stadium = String(row.facility ?? "").trim();
+
+    const groupKey = `${compId}||${dk}||${stadium}`;
+
+    if (!map.has(groupKey)) {
+      map.set(groupKey, {
+        competitionId: compId,
+        competitionName: String(row.name ?? row.competitionType ?? "").trim(), // full comp name first
+        facility: stadium,
+        matchDate: row.matchDate,
+        dateKey: dk,
+        weekday: formatWeekday(row.matchDate),
+        rounds: new Set(),
+        teams: new Set(),
+        statuses: new Set(),
+        rawCount: 0
+      });
+    }
+
+    const g = map.get(groupKey);
+
+    g.rawCount += 1;
+
+    if (row.round !== undefined && row.round !== null && String(row.round).trim() !== "") {
+      g.rounds.add(String(row.round).trim());
+    }
+
+    const teams = extractTeams(row.matchDescription);
+    teams.forEach(t => g.teams.add(t));
+
+    if (row.matchStatus) {
+      g.statuses.add(String(row.matchStatus).trim());
+    }
+  }
+
+  GROUPED = [...map.values()].map(g => {
+    const teamsList = sortMixed([...g.teams]);
+    const roundsList = sortMixed([...g.rounds]);
+    const statusesList = sortMixed([...g.statuses]);
+
+    return {
+      competitionId: g.competitionId,
+      competitionName: g.competitionName,
+      facility: g.facility,
+      matchDate: g.matchDate,
+      dateKey: g.dateKey,
+      weekday: g.weekday,
+      teamsList,
+      roundsList,
+      statusList: statusesList,
+      teamsText: joinHuman(teamsList),
+      roundsText: joinHuman(roundsList),
+      statusText: joinHuman(statusesList),
+      matchText: `${joinHuman(teamsList)}`
+    };
+  });
+}
+
+/* ---------------- controls ---------------- */
 
 function buildControls() {
   const el = document.querySelector(".controls");
@@ -153,14 +263,12 @@ function buildControls() {
   const tz = document.getElementById("tzToggle");
   tz.addEventListener("change", () => {
     USE_FAROE_TZ = tz.checked;
-
-    // ✅ when switching timezone mode, reset From to "today" in that mode
+    rebuildGroupedData();
+    fillDynamicLists();
     setDefaultFromToday();
-
     applyFilters();
   });
 
-  // Close panels when clicking outside
   document.addEventListener("click", (e) => {
     const panels = ["panelTeams","panelComps","panelStadiums"].map(id => document.getElementById(id));
     const pickers = ["pickerTeams","pickerComps","pickerStadiums"].map(id => document.getElementById(id));
@@ -168,7 +276,6 @@ function buildControls() {
     if (!clickedInside) panels.forEach(p => p && p.classList.remove("open"));
   });
 
-  // Build Team panel from your fixed list
   buildPanel({
     panelId: "panelTeams",
     items: TEAM_NAMES,
@@ -251,18 +358,16 @@ function buildPanel({ panelId, items, set, onChange }) {
 }
 
 function fillDynamicLists() {
-  const comps = uniq(RAW.map(r => r.competitionType));
   buildPanel({
     panelId: "panelComps",
-    items: comps,
+    items: uniq(GROUPED.map(r => r.competitionName)),
     set: selected.comps,
     onChange: () => updatePickerButtons()
   });
 
-  const stadiums = uniq(RAW.map(r => r.facility));
   buildPanel({
     panelId: "panelStadiums",
-    items: stadiums,
+    items: uniq(GROUPED.map(r => r.facility)),
     set: selected.stadiums,
     onChange: () => updatePickerButtons()
   });
@@ -274,32 +379,29 @@ function fillDynamicLists() {
 
 function applyFilters() {
   const q = norm(document.getElementById("q").value.trim());
-  const fromStr = document.getElementById("from").value; // YYYY-MM-DD
-  const toStr = document.getElementById("to").value;     // YYYY-MM-DD
+  const fromStr = document.getElementById("from").value;
+  const toStr = document.getElementById("to").value;
 
-  VIEW = RAW.filter(m => {
-    if (selected.comps.size > 0) {
-      const c = String(m.competitionType ?? "").trim();
-      if (!selected.comps.has(c)) return false;
+  VIEW = GROUPED.filter(g => {
+    if (selected.comps.size > 0 && !selected.comps.has(g.competitionName)) {
+      return false;
     }
 
-    if (selected.stadiums.size > 0) {
-      const s = String(m.facility ?? "").trim();
-      if (!selected.stadiums.has(s)) return false;
+    if (selected.stadiums.size > 0 && !selected.stadiums.has(g.facility)) {
+      return false;
     }
 
-    if (selected.teams.size > 0) {
-      if (!matchHasAnyTeam(m)) return false;
+    if (!matchesAnySelectedTeam(g)) {
+      return false;
     }
 
     if (fromStr || toStr) {
-      const key = dateKey(m.matchDate);
-      if (!key) return false;
-      if (fromStr && key < fromStr) return false;
-      if (toStr && key > toStr) return false;
+      if (!g.dateKey) return false;
+      if (fromStr && g.dateKey < fromStr) return false;
+      if (toStr && g.dateKey > toStr) return false;
     }
 
-    if (!textMatch(m, q)) return false;
+    if (!textMatch(g, q)) return false;
 
     return true;
   });
@@ -313,31 +415,27 @@ function resetFilters() {
   selected.stadiums.clear();
 
   const q = document.getElementById("q");
-  const from = document.getElementById("from");
   const to = document.getElementById("to");
   if (q) q.value = "";
   if (to) to.value = "";
 
-  // ✅ keep "From = today" even after reset
-  setDefaultFromToday();
-
-  // rebuild panels (uncheck)
   buildControls();
   fillDynamicLists();
-
+  setDefaultFromToday();
   applyFilters();
 }
 
-/* ---------------- table + sorting ---------------- */
+/* ---------------- table ---------------- */
 
 function render() {
   const cols = [
-    { key: "competitionType", label: "Competition" },
-    { key: "matchDescription", label: "Match" },
+    { key: "competitionName", label: "Competition" },
+    { key: "weekday", label: "Weekday" },
+    { key: "matchText", label: "Teams" },
     { key: "facility", label: "Stadium" },
     { key: "matchDate", label: "Date" },
-    { key: "round", label: "Round" },
-    { key: "matchStatus", label: "Status" }
+    { key: "roundsText", label: "Rounds" },
+    { key: "statusText", label: "Status" }
   ];
 
   const thead = document.querySelector("#tbl thead");
@@ -351,18 +449,19 @@ function render() {
 
   tbody.innerHTML = VIEW.map(r => `
     <tr>
-      <td>${escapeHtml(r.competitionType || "")}</td>
-      <td>${escapeHtml(r.matchDescription || "")}</td>
+      <td>${escapeHtml(r.competitionName || "")}</td>
+      <td>${escapeHtml(r.weekday || "")}</td>
+      <td>${escapeHtml(r.matchText || "")}</td>
       <td>${escapeHtml(r.facility || "")}</td>
       <td>${escapeHtml(formatDate(r.matchDate))}</td>
-      <td>${escapeHtml(r.round ?? "")}</td>
-      <td>${escapeHtml(r.matchStatus ?? "")}</td>
+      <td>${escapeHtml(r.roundsText || "")}</td>
+      <td>${escapeHtml(r.statusText || "")}</td>
     </tr>
   `).join("");
 
   const tzLabel = USE_FAROE_TZ ? "Faroe time" : "Local time";
   document.getElementById("note").textContent =
-    `${VIEW.length} matches shown (of ${RAW.length}) — date filter: ${tzLabel}`;
+    `${VIEW.length} grouped rows shown (from ${RAW.length} original matches) — date filter: ${tzLabel}`;
 }
 
 function sortBy(field) {
@@ -385,7 +484,7 @@ function sortBy(field) {
   render();
 }
 
-/* ---------------- CSV EXPORT ---------------- */
+/* ---------------- CSV ---------------- */
 
 function csvEscape(v) {
   const s = String(v ?? "");
@@ -395,12 +494,13 @@ function csvEscape(v) {
 
 function downloadCSV() {
   const columns = [
-    ["competitionType", "Competition"],
-    ["matchDescription", "Match"],
+    ["competitionName", "Competition"],
+    ["weekday", "Weekday"],
+    ["matchText", "Teams"],
     ["facility", "Stadium"],
-    ["matchDate", "Match date"],
-    ["round", "Round"],
-    ["matchStatus", "Status"]
+    ["matchDate", "Date"],
+    ["roundsText", "Rounds"],
+    ["statusText", "Status"]
   ];
 
   const header = columns.map(c => csvEscape(c[1])).join(",");
@@ -416,13 +516,13 @@ function downloadCSV() {
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "fsf_matches_filtered.csv";
+  a.download = "fsf_matches_grouped.csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
 }
 
-/* ---------------- tiny html helpers ---------------- */
+/* ---------------- html helpers ---------------- */
 
 function escapeHtml(s) {
   return String(s ?? "")
