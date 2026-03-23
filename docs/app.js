@@ -1,5 +1,5 @@
 let RAW = [];
-let GROUPED = [];
+let DISPLAY = [];
 let VIEW = [];
 
 // Your provided team list (used for multi-select)
@@ -22,7 +22,7 @@ const SORT_FIELDS = [
   { key: "", label: "(none)" },
   { key: "competitionName", label: "Competition" },
   { key: "weekday", label: "Weekday" },
-  { key: "matchText", label: "Teams" },
+  { key: "matchText", label: "Match / Teams" },
   { key: "facility", label: "Stadium" },
   { key: "matchDate", label: "Date" },
   { key: "roundsText", label: "Rounds" },
@@ -34,7 +34,7 @@ async function loadData() {
   RAW = await res.json();
 
   buildControls();
-  rebuildGroupedData();
+  rebuildDisplayData();
   fillDynamicLists();
   setDefaultFromToday();
   applyFilters();
@@ -161,80 +161,118 @@ function extractTeams(matchDescription) {
   return parts;
 }
 
-function matchesAnySelectedTeam(group) {
+function matchesAnySelectedTeam(row) {
   if (selected.teams.size === 0) return true;
+
+  const hayTeams = row.teamsList && row.teamsList.length
+    ? row.teamsList
+    : extractTeams(row.matchText);
 
   for (const selectedTeam of selected.teams) {
     const sel = norm(selectedTeam);
-    for (const team of group.teamsList) {
+    for (const team of hayTeams) {
       if (norm(team).includes(sel)) return true;
     }
   }
   return false;
 }
 
-function textMatch(group, q) {
+function textMatch(row, q) {
   if (!q) return true;
   const hay = [
-    group.competitionName,
-    group.matchText,
-    group.facility,
-    group.weekday,
-    group.roundsText,
-    group.statusText
+    row.competitionName,
+    row.matchText,
+    row.facility,
+    row.weekday,
+    row.roundsText,
+    row.statusText
   ].map(norm).join(" ");
   return hay.includes(q);
 }
 
-/* ---------------- grouping ---------------- */
+function shouldGroupCompetition(name) {
+  const n = norm(name);
 
-function rebuildGroupedData() {
-  const map = new Map();
+  return (
+    n.includes("gentur u16 ½ vøll 2026") ||
+    n.includes("old boys +35") ||
+    n.includes("old boys +45") ||
+    n.includes("old girls 2026") ||
+    n.includes("u15 dreingir ½ vøll") ||
+    n.includes("u6/u7") ||
+    n.includes("u13") ||
+    n.includes("u11") ||
+    n.includes("u9") ||
+    n.includes("u8") ||
+    n.includes("u7") ||
+    n.includes("u6")
+  );
+}
+
+/* ---------------- build display rows ---------------- */
+
+function rebuildDisplayData() {
+  const groupedMap = new Map();
+  const out = [];
 
   for (const row of RAW) {
-    const compId = row.id ?? row.competitionId ?? row.name ?? "";
+    const competitionName = String(row.name ?? row.competitionType ?? "").trim();
     const dk = dateKey(row.matchDate);
-    const stadium = String(row.facility ?? "").trim();
+    const facility = String(row.facility ?? "").trim();
+    const weekday = formatWeekday(row.matchDate);
+    const teams = extractTeams(row.matchDescription);
+    const status = String(row.matchStatus ?? "").trim();
+    const round = row.round !== undefined && row.round !== null ? String(row.round).trim() : "";
 
-    const groupKey = `${compId}||${dk}||${stadium}`;
+    if (shouldGroupCompetition(competitionName)) {
+      const compId = row.id ?? row.competitionId ?? competitionName;
+      const groupKey = `${compId}||${dk}||${facility}`;
 
-    if (!map.has(groupKey)) {
-      map.set(groupKey, {
-        competitionId: compId,
-        competitionName: String(row.name ?? row.competitionType ?? "").trim(),
-        facility: stadium,
+      if (!groupedMap.has(groupKey)) {
+        groupedMap.set(groupKey, {
+          type: "grouped",
+          competitionId: compId,
+          competitionName,
+          facility,
+          matchDate: row.matchDate,
+          dateKey: dk,
+          weekday,
+          rounds: new Set(),
+          teams: new Set(),
+          statuses: new Set(),
+          rawCount: 0
+        });
+      }
+
+      const g = groupedMap.get(groupKey);
+      g.rawCount += 1;
+      if (round) g.rounds.add(round);
+      teams.forEach(t => g.teams.add(t));
+      if (status) g.statuses.add(status);
+    } else {
+      out.push({
+        type: "raw",
+        competitionId: row.id ?? row.competitionId ?? competitionName,
+        competitionName,
+        facility,
         matchDate: row.matchDate,
         dateKey: dk,
-        weekday: formatWeekday(row.matchDate),
-        rounds: new Set(),
-        teams: new Set(),
-        statuses: new Set(),
-        rawCount: 0
+        weekday,
+        roundsText: round,
+        teamsList: teams,
+        matchText: String(row.matchDescription ?? "").trim(),
+        statusText: status
       });
-    }
-
-    const g = map.get(groupKey);
-
-    g.rawCount += 1;
-
-    if (row.round !== undefined && row.round !== null && String(row.round).trim() !== "") {
-      g.rounds.add(String(row.round).trim());
-    }
-
-    const teams = extractTeams(row.matchDescription);
-    teams.forEach(t => g.teams.add(t));
-
-    if (row.matchStatus) {
-      g.statuses.add(String(row.matchStatus).trim());
     }
   }
 
-  GROUPED = [...map.values()].map(g => {
+  const groupedRows = [...groupedMap.values()].map(g => {
     const teamsList = sortMixed([...g.teams]);
     const roundsList = sortMixed([...g.rounds]);
     const statusesList = sortMixed([...g.statuses]);
 
     return {
+      type: "grouped",
       competitionId: g.competitionId,
       competitionName: g.competitionName,
       facility: g.facility,
@@ -242,14 +280,13 @@ function rebuildGroupedData() {
       dateKey: g.dateKey,
       weekday: g.weekday,
       teamsList,
-      roundsList,
-      statusList: statusesList,
-      teamsText: joinHuman(teamsList),
       roundsText: joinHuman(roundsList),
-      statusText: joinHuman(statusesList),
-      matchText: `${joinHuman(teamsList)}`
+      matchText: joinHuman(teamsList),
+      statusText: joinHuman(statusesList)
     };
   });
+
+  DISPLAY = [...out, ...groupedRows];
 }
 
 /* ---------------- controls ---------------- */
@@ -336,7 +373,7 @@ function buildControls() {
   const tz = document.getElementById("tzToggle");
   tz.addEventListener("change", () => {
     USE_FAROE_TZ = tz.checked;
-    rebuildGroupedData();
+    rebuildDisplayData();
     fillDynamicLists();
     setDefaultFromToday();
     applyFilters();
@@ -436,14 +473,14 @@ function buildPanel({ panelId, items, set, onChange }) {
 function fillDynamicLists() {
   buildPanel({
     panelId: "panelComps",
-    items: uniq(GROUPED.map(r => r.competitionName)),
+    items: uniq(DISPLAY.map(r => r.competitionName)),
     set: selected.comps,
     onChange: () => updatePickerButtons()
   });
 
   buildPanel({
     panelId: "panelStadiums",
-    items: uniq(GROUPED.map(r => r.facility)),
+    items: uniq(DISPLAY.map(r => r.facility)),
     set: selected.stadiums,
     onChange: () => updatePickerButtons()
   });
@@ -487,18 +524,18 @@ function applyFilters() {
   const fromStr = document.getElementById("from").value;
   const toStr = document.getElementById("to").value;
 
-  VIEW = GROUPED.filter(g => {
-    if (selected.comps.size > 0 && !selected.comps.has(g.competitionName)) return false;
-    if (selected.stadiums.size > 0 && !selected.stadiums.has(g.facility)) return false;
-    if (!matchesAnySelectedTeam(g)) return false;
+  VIEW = DISPLAY.filter(r => {
+    if (selected.comps.size > 0 && !selected.comps.has(r.competitionName)) return false;
+    if (selected.stadiums.size > 0 && !selected.stadiums.has(r.facility)) return false;
+    if (!matchesAnySelectedTeam(r)) return false;
 
     if (fromStr || toStr) {
-      if (!g.dateKey) return false;
-      if (fromStr && g.dateKey < fromStr) return false;
-      if (toStr && g.dateKey > toStr) return false;
+      if (!r.dateKey) return false;
+      if (fromStr && r.dateKey < fromStr) return false;
+      if (toStr && r.dateKey > toStr) return false;
     }
 
-    if (!textMatch(g, q)) return false;
+    if (!textMatch(r, q)) return false;
     return true;
   });
 
@@ -517,7 +554,7 @@ function resetFilters() {
   if (to) to.value = "";
 
   buildControls();
-  rebuildGroupedData();
+  rebuildDisplayData();
   fillDynamicLists();
   setDefaultFromToday();
   applyFilters();
@@ -529,7 +566,7 @@ function render() {
   const cols = [
     { key: "competitionName", label: "Competition" },
     { key: "weekday", label: "Weekday" },
-    { key: "matchText", label: "Teams" },
+    { key: "matchText", label: "Match / Teams" },
     { key: "facility", label: "Stadium" },
     { key: "matchDate", label: "Date" },
     { key: "roundsText", label: "Rounds" },
@@ -559,7 +596,7 @@ function render() {
 
   const tzLabel = USE_FAROE_TZ ? "Faroe time" : "Local time";
   document.getElementById("note").textContent =
-    `${VIEW.length} grouped rows shown (from ${RAW.length} original matches) — date filter: ${tzLabel}`;
+    `${VIEW.length} rows shown (from ${RAW.length} original matches) — date filter: ${tzLabel}`;
 }
 
 /* ---------------- CSV ---------------- */
@@ -574,7 +611,7 @@ function downloadCSV() {
   const columns = [
     ["competitionName", "Competition"],
     ["weekday", "Weekday"],
-    ["matchText", "Teams"],
+    ["matchText", "Match / Teams"],
     ["facility", "Stadium"],
     ["matchDate", "Date"],
     ["roundsText", "Rounds"],
@@ -591,7 +628,7 @@ function downloadCSV() {
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "fsf_matches_grouped.csv";
+  a.download = "fsf_matches_view.csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
