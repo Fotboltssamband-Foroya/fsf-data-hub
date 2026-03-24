@@ -567,15 +567,16 @@ function render() {
 
   thead.innerHTML = `<tr>${cols.map(c => `<th class="${c.className}">${c.label}</th>`).join("")}</tr>`;
 
-  tbody.innerHTML = VIEW.map(r => `
+
+    tbody.innerHTML = VIEW.map(r => `
     <tr>
-      <td>${escapeHtml(r.competitionName || "")}</td>
+      <td class="col-comp">${escapeHtml(r.competitionName || "")}</td>
       <td class="col-round">${escapeHtml(r.roundsText || "")}</td>
-      <td>${escapeHtml(r.matchText || "")}</td>
-      <td>${escapeHtml(r.facility || "")}</td>
+      <td class="col-match">${escapeHtml(r.matchText || "")}</td>
+      <td class="col-stadium">${escapeHtml(r.facility || "")}</td>
       <td class="col-date">${escapeHtml(formatDate(r.matchDate))}</td>
       <td class="col-weekday">${escapeHtml(r.weekday || "")}</td>
-      <td>${escapeHtml(r.statusText || "")}</td>
+      <td class="col-status">${escapeHtml(r.statusText || "")}</td>
     </tr>
   `).join("");
 
