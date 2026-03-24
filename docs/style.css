@@ -267,7 +267,7 @@ tbody tr:hover td{
 
 /* requested column sizing */
 .col-round{
-  width: 90px;
+  width: 45px;
   white-space: nowrap;
 }
 
