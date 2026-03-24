@@ -281,6 +281,11 @@ tbody tr:hover td{
   white-space: nowrap;
 }
 
+.col-stadium{
+  min-width: 220px;
+  white-space: nowrap;
+}
+
 @media (max-width: 720px){
   .controls input[type="text"]{ min-width:100%; }
   header{ flex-direction:column; align-items:flex-start; }
