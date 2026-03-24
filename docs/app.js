@@ -1,654 +1,291 @@
-let RAW = [];
-let DISPLAY = [];
-let VIEW = [];
-
-// Your provided team list (used for multi-select)
-const TEAM_NAMES = [
-  "07 Vestur","AB","B36","B68","B71","EB/Streymur","FC Hoyvík","FC Suðuroy",
-  "HB","ÍF","KÍ","MB","NSÍ","Royn","Skála ÍF","TB","Víkingur"
-];
-
-// Selected filters (multi-select as Sets)
-const selected = {
-  teams: new Set(),
-  comps: new Set(),
-  stadiums: new Set(),
-};
-
-let USE_FAROE_TZ = true;
-
-// Sort config
-const SORT_FIELDS = [
-  { key: "", label: "(none)" },
-  { key: "competitionName", label: "Competition" },
-  { key: "weekday", label: "Weekday" },
-  { key: "matchText", label: "Match / Teams" },
-  { key: "facility", label: "Stadium" },
-  { key: "matchDate", label: "Date" },
-  { key: "roundsText", label: "Rounds" },
-  { key: "statusText", label: "Status" }
-];
-
-async function loadData() {
-  const res = await fetch("data/matches.json", { cache: "no-store" });
-  RAW = await res.json();
-
-  buildControls();
-  rebuildDisplayData();
-  fillDynamicLists();
-  setDefaultFromToday();
-  applyFilters();
+:root{
+  --bg:#0b1220;
+  --card:#0f1a2f;
+  --muted:#93a4c7;
+  --text:#e9eefc;
+  --line:rgba(255,255,255,.10);
+  --soft:rgba(255,255,255,.06);
+  --focus:rgba(130,170,255,.35);
 }
 
-/* ---------------- helpers ---------------- */
+*{ box-sizing:border-box; }
 
-function uniq(arr) {
-  return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
-    .map(v => String(v).trim())
-    .sort((a,b) => a.localeCompare(b));
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  background:
+    radial-gradient(1200px 700px at 20% -10%, rgba(130,170,255,.25), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, rgba(124,58,237,.22), transparent 55%),
+    var(--bg);
+  color:var(--text);
 }
 
-function norm(s) {
-  return String(s ?? "").toLowerCase();
+.container{
+  max-width:1280px;
+  margin:0 auto;
+  padding:22px 16px 40px;
 }
 
-function formatDate(ms) {
-  if (!ms) return "";
-  return new Date(Number(ms)).toLocaleString("en-GB", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
+header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
 }
 
-function formatWeekday(ms) {
-  if (!ms) return "";
-  const opts = USE_FAROE_TZ
-    ? { weekday: "long", timeZone: "Atlantic/Faroe" }
-    : { weekday: "long" };
-
-  const day = new Intl.DateTimeFormat("fo-FO", opts).format(new Date(Number(ms)));
-  return day.charAt(0).toUpperCase() + day.slice(1);
+h1{
+  margin:0;
+  font-size:22px;
+  letter-spacing:.2px;
 }
 
-function faroeDateKey(ms) {
-  if (!ms) return "";
-  const dt = new Date(Number(ms));
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Atlantic/Faroe",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(dt);
-
-  const y = parts.find(p => p.type === "year")?.value ?? "";
-  const m = parts.find(p => p.type === "month")?.value ?? "";
-  const d = parts.find(p => p.type === "day")?.value ?? "";
-  return `${y}-${m}-${d}`;
+.sub{
+  color:var(--muted);
+  font-size:13px;
+  margin-top:6px;
 }
 
-function localDateKey(ms) {
-  if (!ms) return "";
-  const d = new Date(Number(ms));
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  padding:12px;
+  border:1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border-radius:16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.25);
+  margin-bottom:12px;
 }
 
-function dateKey(ms) {
-  return USE_FAROE_TZ ? faroeDateKey(ms) : localDateKey(ms);
+.controls input[type="text"],
+.controls input[type="date"],
+.controls select{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  color:var(--text);
+  padding:10px 10px;
+  border-radius:12px;
+  outline:none;
+  font-size:14px;
 }
 
-function todayKey() {
-  return dateKey(Date.now());
+.controls input[type="text"]{ min-width:260px; }
+.controls input[type="date"]{ padding:9px 10px; }
+
+.controls input:focus,
+.controls select:focus{
+  box-shadow: 0 0 0 4px var(--focus);
+  border-color: rgba(130,170,255,.55);
 }
 
-function setDefaultFromToday() {
-  const from = document.getElementById("from");
-  if (!from) return;
-  from.value = todayKey();
+.controls label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:13px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid transparent;
+  background: transparent;
 }
 
-function joinHuman(arr) {
-  const clean = arr.filter(Boolean);
-  if (clean.length === 0) return "";
-  if (clean.length === 1) return clean[0];
-  if (clean.length === 2) return `${clean[0]} og ${clean[1]}`;
-  return `${clean.slice(0, -1).join(", ")} og ${clean[clean.length - 1]}`;
+.controls label:hover{
+  background: rgba(255,255,255,.04);
+  border-color: var(--line);
 }
 
-function sortMixed(arr) {
-  return [...arr].sort((a, b) => {
-    const an = Number(a);
-    const bn = Number(b);
-    const aNum = !isNaN(an);
-    const bNum = !isNaN(bn);
-
-    if (aNum && bNum) return an - bn;
-    return String(a).localeCompare(String(b));
-  });
+button{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.06);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:14px;
+  transition: transform .05s ease, background .15s ease, border-color .15s ease;
 }
 
-function compareValues(a, b, direction) {
-  const dir = direction === "desc" ? -1 : 1;
+button:hover{
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.18);
+}
 
-  if (a === b) return 0;
-  if (a === null || a === undefined) return 1 * dir;
-  if (b === null || b === undefined) return -1 * dir;
+button:active{
+  transform: translateY(1px);
+}
 
-  if (typeof a === "number" && typeof b === "number") {
-    return (a - b) * dir;
+#note{
+  margin:10px 2px 12px;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.picker{
+  position:relative;
+  display:inline-block;
+}
+
+.picker > button{
+  white-space:nowrap;
+}
+
+.panel{
+  position:absolute;
+  z-index:999;
+  top:44px;
+  left:0;
+  min-width:320px;
+  max-width:460px;
+  max-height:380px;
+  overflow:auto;
+  border:1px solid var(--line);
+  background: rgba(15,26,47,.98);
+  backdrop-filter: blur(10px);
+  padding:12px;
+  border-radius:16px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  display:none;
+}
+
+.panel.open{
+  display:block;
+}
+
+.panel .row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.panel .row strong{
+  color:var(--text);
+  font-size:13px;
+  letter-spacing:.2px;
+}
+
+.panel .row input[type="text"],
+.panel .row select{
+  width:100%;
+  min-width:0;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.05);
+  color:var(--text);
+  padding:9px 10px;
+  border-radius:10px;
+  outline:none;
+  font-size:14px;
+}
+
+.panel .row input[type="text"]:focus,
+.panel .row select:focus{
+  box-shadow: 0 0 0 4px var(--focus);
+  border-color: rgba(130,170,255,.55);
+}
+
+.panel .actions{
+  display:flex;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.panel label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 6px;
+  border-radius:10px;
+  user-select:none;
+  color: var(--text);
+}
+
+.panel label:hover{
+  background: rgba(255,255,255,.06);
+}
+
+.panel input[type="checkbox"]{
+  width:16px;
+  height:16px;
+}
+
+.panel select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+}
+
+.tableWrap{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
+}
+
+table{
+  border-collapse: collapse;
+  width:100%;
+  font-size:14px;
+}
+
+thead th{
+  position: sticky;
+  top: 0;
+  background: rgba(15,26,47,.98);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 10px;
+  text-align:left;
+  user-select:none;
+}
+
+tbody td{
+  padding: 10px 10px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  vertical-align: top;
+  color: rgba(233,238,252,.95);
+}
+
+tbody tr:hover td{
+  background: rgba(255,255,255,.04);
+}
+
+#panelSort{
+  min-width:360px;
+}
+
+#panelSort .row{
+  justify-content: space-between;
+}
+
+#panelSort .row select{
+  flex:1;
+}
+
+/* requested column sizing */
+.col-round{
+  width: 90px;
+  white-space: nowrap;
+}
+
+.col-date{
+  min-width: 170px;
+  white-space: nowrap;
+}
+
+.col-weekday{
+  min-width: 120px;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px){
+  .controls input[type="text"]{ min-width:100%; }
+  header{ flex-direction:column; align-items:flex-start; }
+  .panel{
+    min-width:280px;
+    max-width:92vw;
   }
-
-  return String(a).localeCompare(String(b)) * dir;
 }
-
-function extractTeams(matchDescription) {
-  if (!matchDescription) return [];
-  let left = String(matchDescription);
-
-  if (left.includes(" -:-")) {
-    left = left.split(" -:-")[0];
-  } else if (left.match(/\s\d+:\d+$/)) {
-    left = left.replace(/\s\d+:\d+$/, "");
-  }
-
-  const parts = left.split(" - ").map(x => x.trim()).filter(Boolean);
-  return parts;
-}
-
-function matchesAnySelectedTeam(row) {
-  if (selected.teams.size === 0) return true;
-
-  const hayTeams = row.teamsList && row.teamsList.length
-    ? row.teamsList
-    : extractTeams(row.matchText);
-
-  for (const selectedTeam of selected.teams) {
-    const sel = norm(selectedTeam);
-    for (const team of hayTeams) {
-      if (norm(team).includes(sel)) return true;
-    }
-  }
-  return false;
-}
-
-function textMatch(row, q) {
-  if (!q) return true;
-  const hay = [
-    row.competitionName,
-    row.matchText,
-    row.facility,
-    row.weekday,
-    row.roundsText,
-    row.statusText
-  ].map(norm).join(" ");
-  return hay.includes(q);
-}
-
-function shouldGroupCompetition(name) {
-  const n = norm(name);
-
-  return (
-    n.includes("gentur u16 ½ vøll 2026") ||
-    n.includes("old boys +35") ||
-    n.includes("old boys +45") ||
-    n.includes("old girls 2026") ||
-    n.includes("u15 dreingir ½ vøll") ||
-    n.includes("u6/u7") ||
-    n.includes("u13") ||
-    n.includes("u11") ||
-    n.includes("u9") ||
-    n.includes("u8") ||
-    n.includes("u7") ||
-    n.includes("u6")
-  );
-}
-
-/* ---------------- build display rows ---------------- */
-
-function rebuildDisplayData() {
-  const groupedMap = new Map();
-  const out = [];
-
-  for (const row of RAW) {
-    const competitionName = String(row.name ?? row.competitionType ?? "").trim();
-    const dk = dateKey(row.matchDate);
-    const facility = String(row.facility ?? "").trim();
-    const weekday = formatWeekday(row.matchDate);
-    const teams = extractTeams(row.matchDescription);
-    const status = String(row.matchStatus ?? "").trim();
-    const round = row.round !== undefined && row.round !== null ? String(row.round).trim() : "";
-
-    if (shouldGroupCompetition(competitionName)) {
-      const compId = row.id ?? row.competitionId ?? competitionName;
-      const groupKey = `${compId}||${dk}||${facility}`;
-
-      if (!groupedMap.has(groupKey)) {
-        groupedMap.set(groupKey, {
-          type: "grouped",
-          competitionId: compId,
-          competitionName,
-          facility,
-          matchDate: row.matchDate,
-          dateKey: dk,
-          weekday,
-          rounds: new Set(),
-          teams: new Set(),
-          statuses: new Set(),
-          rawCount: 0
-        });
-      }
-
-      const g = groupedMap.get(groupKey);
-      g.rawCount += 1;
-      if (round) g.rounds.add(round);
-      teams.forEach(t => g.teams.add(t));
-      if (status) g.statuses.add(status);
-    } else {
-      out.push({
-        type: "raw",
-        competitionId: row.id ?? row.competitionId ?? competitionName,
-        competitionName,
-        facility,
-        matchDate: row.matchDate,
-        dateKey: dk,
-        weekday,
-        roundsText: round,
-        teamsList: teams,
-        matchText: String(row.matchDescription ?? "").trim(),
-        statusText: status
-      });
-    }
-  }
-
-  const groupedRows = [...groupedMap.values()].map(g => {
-    const teamsList = sortMixed([...g.teams]);
-    const roundsList = sortMixed([...g.rounds]);
-    const statusesList = sortMixed([...g.statuses]);
-
-    return {
-      type: "grouped",
-      competitionId: g.competitionId,
-      competitionName: g.competitionName,
-      facility: g.facility,
-      matchDate: g.matchDate,
-      dateKey: g.dateKey,
-      weekday: g.weekday,
-      teamsList,
-      roundsText: joinHuman(roundsList),
-      matchText: joinHuman(teamsList),
-      statusText: joinHuman(statusesList)
-    };
-  });
-
-  DISPLAY = [...out, ...groupedRows];
-}
-
-/* ---------------- controls ---------------- */
-
-function buildControls() {
-  const el = document.querySelector(".controls");
-
-  const sortOptions = SORT_FIELDS.map(f => `<option value="${f.key}">${f.label}</option>`).join("");
-
-  el.innerHTML = `
-    <input id="q" type="text" placeholder="Search (free text)">
-
-    <label style="display:flex;align-items:center;gap:8px;">
-      <input id="tzToggle" type="checkbox" checked>
-      Use Faroe time
-    </label>
-
-    <div class="picker" id="pickerTeams">
-      <button type="button" onclick="togglePanel('panelTeams')">Teams (${selected.teams.size})</button>
-      <div class="panel" id="panelTeams"></div>
-    </div>
-
-    <div class="picker" id="pickerComps">
-      <button type="button" onclick="togglePanel('panelComps')">Competitions (${selected.comps.size})</button>
-      <div class="panel" id="panelComps"></div>
-    </div>
-
-    <div class="picker" id="pickerStadiums">
-      <button type="button" onclick="togglePanel('panelStadiums')">Stadiums (${selected.stadiums.size})</button>
-      <div class="panel" id="panelStadiums"></div>
-    </div>
-
-    From <input id="from" type="date">
-    To <input id="to" type="date">
-
-    <div class="picker" id="pickerSort">
-      <button type="button" onclick="togglePanel('panelSort')">Sort</button>
-      <div class="panel" id="panelSort">
-        <div class="row"><strong>Sort 1</strong></div>
-        <div class="row">
-          <select id="sort1Field">${sortOptions}</select>
-          <select id="sort1Dir">
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        </div>
-
-        <div class="row"><strong>Sort 2</strong></div>
-        <div class="row">
-          <select id="sort2Field">${sortOptions}</select>
-          <select id="sort2Dir">
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        </div>
-
-        <div class="row"><strong>Sort 3</strong></div>
-        <div class="row">
-          <select id="sort3Field">${sortOptions}</select>
-          <select id="sort3Dir">
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        </div>
-
-        <div class="actions">
-          <button type="button" onclick="applyFilters()">Apply sorting</button>
-        </div>
-      </div>
-    </div>
-
-    <button type="button" onclick="applyFilters()">Apply</button>
-    <button type="button" onclick="resetFilters()">Reset</button>
-    <button type="button" onclick="downloadCSV()">Export CSV</button>
-  `;
-
-  document.getElementById("sort1Field").value = "matchDate";
-  document.getElementById("sort1Dir").value = "asc";
-  document.getElementById("sort2Field").value = "facility";
-  document.getElementById("sort2Dir").value = "asc";
-  document.getElementById("sort3Field").value = "competitionName";
-  document.getElementById("sort3Dir").value = "asc";
-
-  const tz = document.getElementById("tzToggle");
-  tz.addEventListener("change", () => {
-    USE_FAROE_TZ = tz.checked;
-    rebuildDisplayData();
-    fillDynamicLists();
-    setDefaultFromToday();
-    applyFilters();
-  });
-
-  document.addEventListener("click", (e) => {
-    const panels = ["panelTeams","panelComps","panelStadiums","panelSort"].map(id => document.getElementById(id));
-    const wrappers = ["pickerTeams","pickerComps","pickerStadiums","pickerSort"].map(id => document.getElementById(id));
-    const clickedInside = wrappers.some(w => w && w.contains(e.target));
-
-    if (!clickedInside) {
-      panels.forEach(p => p && p.classList.remove("open"));
-    }
-  });
-
-  buildPanel({
-    panelId: "panelTeams",
-    items: TEAM_NAMES,
-    set: selected.teams,
-    onChange: () => updatePickerButtons()
-  });
-}
-
-function togglePanel(panelId) {
-  const p = document.getElementById(panelId);
-  if (!p) return;
-  p.classList.toggle("open");
-}
-
-function updatePickerButtons() {
-  const btnTeams = document.querySelector("#pickerTeams button");
-  const btnComps = document.querySelector("#pickerComps button");
-  const btnStad = document.querySelector("#pickerStadiums button");
-  if (btnTeams) btnTeams.textContent = `Teams (${selected.teams.size})`;
-  if (btnComps) btnComps.textContent = `Competitions (${selected.comps.size})`;
-  if (btnStad) btnStad.textContent = `Stadiums (${selected.stadiums.size})`;
-}
-
-function buildPanel({ panelId, items, set, onChange }) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-
-  const safeItems = items.slice();
-  panel.innerHTML = `
-    <div class="row">
-      <input type="text" placeholder="Filter list…" data-filter="1">
-    </div>
-    <div class="actions">
-      <button type="button" data-all="1">Select all</button>
-      <button type="button" data-none="1">Select none</button>
-    </div>
-    <div data-list="1"></div>
-  `;
-
-  const filterInput = panel.querySelector('input[data-filter="1"]');
-  const listDiv = panel.querySelector('div[data-list="1"]');
-  const btnAll = panel.querySelector('button[data-all="1"]');
-  const btnNone = panel.querySelector('button[data-none="1"]');
-
-  function renderList() {
-    const q = norm(filterInput.value);
-    const show = safeItems.filter(x => norm(x).includes(q));
-
-    listDiv.innerHTML = show.map(x => {
-      const checked = set.has(x) ? "checked" : "";
-      return `<label><input type="checkbox" data-item="${escapeHtml(x)}" ${checked}> ${escapeHtml(x)}</label>`;
-    }).join("");
-
-    listDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.addEventListener("change", () => {
-        const item = cb.getAttribute("data-item");
-        const real = decodeHtml(item);
-        if (cb.checked) set.add(real);
-        else set.delete(real);
-        onChange();
-      });
-    });
-  }
-
-  filterInput.addEventListener("input", renderList);
-
-  btnAll.addEventListener("click", () => {
-    safeItems.forEach(x => set.add(x));
-    onChange();
-    renderList();
-  });
-
-  btnNone.addEventListener("click", () => {
-    set.clear();
-    onChange();
-    renderList();
-  });
-
-  renderList();
-}
-
-function fillDynamicLists() {
-  buildPanel({
-    panelId: "panelComps",
-    items: uniq(DISPLAY.map(r => r.competitionName)),
-    set: selected.comps,
-    onChange: () => updatePickerButtons()
-  });
-
-  buildPanel({
-    panelId: "panelStadiums",
-    items: uniq(DISPLAY.map(r => r.facility)),
-    set: selected.stadiums,
-    onChange: () => updatePickerButtons()
-  });
-
-  updatePickerButtons();
-}
-
-/* ---------------- sorting ---------------- */
-
-function applySort(data) {
-  const sortConfig = [
-    {
-      field: document.getElementById("sort1Field")?.value || "",
-      dir: document.getElementById("sort1Dir")?.value || "asc"
-    },
-    {
-      field: document.getElementById("sort2Field")?.value || "",
-      dir: document.getElementById("sort2Dir")?.value || "asc"
-    },
-    {
-      field: document.getElementById("sort3Field")?.value || "",
-      dir: document.getElementById("sort3Dir")?.value || "asc"
-    }
-  ].filter(x => x.field);
-
-  data.sort((a, b) => {
-    for (const s of sortConfig) {
-      const result = compareValues(a[s.field], b[s.field], s.dir);
-      if (result !== 0) return result;
-    }
-    return 0;
-  });
-
-  return data;
-}
-
-/* ---------------- filtering ---------------- */
-
-function applyFilters() {
-  const q = norm(document.getElementById("q").value.trim());
-  const fromStr = document.getElementById("from").value;
-  const toStr = document.getElementById("to").value;
-
-  VIEW = DISPLAY.filter(r => {
-    if (selected.comps.size > 0 && !selected.comps.has(r.competitionName)) return false;
-    if (selected.stadiums.size > 0 && !selected.stadiums.has(r.facility)) return false;
-    if (!matchesAnySelectedTeam(r)) return false;
-
-    if (fromStr || toStr) {
-      if (!r.dateKey) return false;
-      if (fromStr && r.dateKey < fromStr) return false;
-      if (toStr && r.dateKey > toStr) return false;
-    }
-
-    if (!textMatch(r, q)) return false;
-    return true;
-  });
-
-  VIEW = applySort(VIEW);
-  render();
-}
-
-function resetFilters() {
-  selected.teams.clear();
-  selected.comps.clear();
-  selected.stadiums.clear();
-
-  const q = document.getElementById("q");
-  const to = document.getElementById("to");
-  if (q) q.value = "";
-  if (to) to.value = "";
-
-  buildControls();
-  rebuildDisplayData();
-  fillDynamicLists();
-  setDefaultFromToday();
-  applyFilters();
-}
-
-/* ---------------- table ---------------- */
-
-function render() {
-  const cols = [
-    { key: "competitionName", label: "Competition" },
-    { key: "weekday", label: "Weekday" },
-    { key: "matchText", label: "Match / Teams" },
-    { key: "facility", label: "Stadium" },
-    { key: "matchDate", label: "Date" },
-    { key: "roundsText", label: "Rounds" },
-    { key: "statusText", label: "Status" }
-  ];
-
-  const thead = document.querySelector("#tbl thead");
-  const tbody = document.querySelector("#tbl tbody");
-
-  thead.innerHTML = `
-    <tr>
-      ${cols.map(c => `<th>${c.label}</th>`).join("")}
-    </tr>
-  `;
-
-  tbody.innerHTML = VIEW.map(r => `
-    <tr>
-      <td>${escapeHtml(r.competitionName || "")}</td>
-      <td>${escapeHtml(r.weekday || "")}</td>
-      <td>${escapeHtml(r.matchText || "")}</td>
-      <td>${escapeHtml(r.facility || "")}</td>
-      <td>${escapeHtml(formatDate(r.matchDate))}</td>
-      <td>${escapeHtml(r.roundsText || "")}</td>
-      <td>${escapeHtml(r.statusText || "")}</td>
-    </tr>
-  `).join("");
-
-  const tzLabel = USE_FAROE_TZ ? "Faroe time" : "Local time";
-  document.getElementById("note").textContent =
-    `${VIEW.length} rows shown (from ${RAW.length} original matches) — date filter: ${tzLabel}`;
-}
-
-/* ---------------- CSV ---------------- */
-
-function csvEscape(v) {
-  const s = String(v ?? "");
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
-
-function downloadCSV() {
-  const columns = [
-    ["competitionName", "Competition"],
-    ["weekday", "Weekday"],
-    ["matchText", "Match / Teams"],
-    ["facility", "Stadium"],
-    ["matchDate", "Date"],
-    ["roundsText", "Rounds"],
-    ["statusText", "Status"]
-  ];
-
-  const header = columns.map(c => csvEscape(c[1])).join(",");
-  const lines = VIEW.map(r =>
-    columns.map(([key]) => key === "matchDate" ? csvEscape(formatDate(r.matchDate)) : csvEscape(r[key])).join(",")
-  );
-
-  const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "fsf_matches_view.csv";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-/* ---------------- html helpers ---------------- */
-
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function decodeHtml(s) {
-  const txt = document.createElement("textarea");
-  txt.innerHTML = s;
-  return txt.value;
-}
-
-loadData();
