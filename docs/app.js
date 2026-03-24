@@ -553,7 +553,7 @@ function resetFilters() {
 
 function render() {
   const cols = [
-    { key: "competitionName", label: "Competition", className: "" },
+    { key: "competitionName", label: "Competition", className: "col-comp" },
     { key: "roundsText", label: "Round", className: "col-round" },
     { key: "matchText", label: "Match / Teams", className: "" },
     { key: "facility", label: "Stadium", className: "col-stadium" },
