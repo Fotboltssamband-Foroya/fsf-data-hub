@@ -2,13 +2,11 @@ let RAW = [];
 let DISPLAY = [];
 let VIEW = [];
 
-// Your provided team list (used for multi-select)
 const TEAM_NAMES = [
   "07 Vestur","AB","B36","B68","B71","EB/Streymur","FC Hoyvík","FC Suðuroy",
   "HB","ÍF","KÍ","MB","NSÍ","Royn","Skála ÍF","TB","Víkingur"
 ];
 
-// Selected filters (multi-select as Sets)
 const selected = {
   teams: new Set(),
   comps: new Set(),
@@ -17,11 +15,10 @@ const selected = {
 
 let USE_FAROE_TZ = true;
 
-// Sort config
 const SORT_FIELDS = [
   { key: "", label: "(none)" },
   { key: "competitionName", label: "Competition" },
-  { key: "roundsText", label: "Rounds" },
+  { key: "roundsText", label: "Round" },
   { key: "matchText", label: "Match / Teams" },
   { key: "facility", label: "Stadium" },
   { key: "matchDate", label: "Date" },
@@ -30,14 +27,19 @@ const SORT_FIELDS = [
 ];
 
 async function loadData() {
-  const res = await fetch("data/matches.json", { cache: "no-store" });
-  RAW = await res.json();
+  try {
+    const res = await fetch("data/matches.json", { cache: "no-store" });
+    RAW = await res.json();
 
-  buildControls();
-  rebuildDisplayData();
-  fillDynamicLists();
-  setDefaultFromToday();
-  applyFilters();
+    buildControls();
+    rebuildDisplayData();
+    fillDynamicLists();
+    setDefaultFromToday();
+    applyFilters();
+  } catch (err) {
+    console.error(err);
+    document.getElementById("note").textContent = "Error loading data.";
+  }
 }
 
 /* ---------------- helpers ---------------- */
@@ -45,7 +47,7 @@ async function loadData() {
 function uniq(arr) {
   return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
     .map(v => String(v).trim())
-    .sort((a,b) => a.localeCompare(b));
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function norm(s) {
@@ -69,7 +71,6 @@ function formatWeekday(ms) {
   const opts = USE_FAROE_TZ
     ? { weekday: "long", timeZone: "Atlantic/Faroe" }
     : { weekday: "long" };
-
   const day = new Intl.DateTimeFormat("fo-FO", opts).format(new Date(Number(ms)));
   return day.charAt(0).toUpperCase() + day.slice(1);
 }
@@ -81,7 +82,7 @@ function faroeDateKey(ms) {
     timeZone: "Atlantic/Faroe",
     year: "numeric",
     month: "2-digit",
-    day: "2-digit",
+    day: "2-digit"
   }).formatToParts(dt);
 
   const y = parts.find(p => p.type === "year")?.value ?? "";
@@ -109,8 +110,7 @@ function todayKey() {
 
 function setDefaultFromToday() {
   const from = document.getElementById("from");
-  if (!from) return;
-  from.value = todayKey();
+  if (from) from.value = todayKey();
 }
 
 function joinHuman(arr) {
@@ -127,7 +127,6 @@ function sortMixed(arr) {
     const bn = Number(b);
     const aNum = !isNaN(an);
     const bNum = !isNaN(bn);
-
     if (aNum && bNum) return an - bn;
     return String(a).localeCompare(String(b));
   });
@@ -135,15 +134,10 @@ function sortMixed(arr) {
 
 function compareValues(a, b, direction) {
   const dir = direction === "desc" ? -1 : 1;
-
   if (a === b) return 0;
   if (a === null || a === undefined) return 1 * dir;
   if (b === null || b === undefined) return -1 * dir;
-
-  if (typeof a === "number" && typeof b === "number") {
-    return (a - b) * dir;
-  }
-
+  if (typeof a === "number" && typeof b === "number") return (a - b) * dir;
   return String(a).localeCompare(String(b)) * dir;
 }
 
@@ -157,8 +151,7 @@ function extractTeams(matchDescription) {
     left = left.replace(/\s\d+:\d+$/, "");
   }
 
-  const parts = left.split(" - ").map(x => x.trim()).filter(Boolean);
-  return parts;
+  return left.split(" - ").map(x => x.trim()).filter(Boolean);
 }
 
 function matchesAnySelectedTeam(row) {
@@ -168,10 +161,10 @@ function matchesAnySelectedTeam(row) {
     ? row.teamsList
     : extractTeams(row.matchText);
 
-  for (const selectedTeam of selected.teams) {
-    const sel = norm(selectedTeam);
+  for (const wanted of selected.teams) {
+    const w = norm(wanted);
     for (const team of hayTeams) {
-      if (norm(team).includes(sel)) return true;
+      if (norm(team).includes(w)) return true;
     }
   }
   return false;
@@ -192,7 +185,6 @@ function textMatch(row, q) {
 
 function shouldGroupCompetition(name) {
   const n = norm(name);
-
   return (
     n.includes("gentur u16 ½ vøll 2026") ||
     n.includes("old boys +35") ||
@@ -213,7 +205,7 @@ function shouldGroupCompetition(name) {
 
 function rebuildDisplayData() {
   const groupedMap = new Map();
-  const out = [];
+  const singles = [];
 
   for (const row of RAW) {
     const competitionName = String(row.name ?? row.competitionType ?? "").trim();
@@ -230,7 +222,6 @@ function rebuildDisplayData() {
 
       if (!groupedMap.has(groupKey)) {
         groupedMap.set(groupKey, {
-          type: "grouped",
           competitionId: compId,
           competitionName,
           facility,
@@ -239,19 +230,17 @@ function rebuildDisplayData() {
           weekday,
           rounds: new Set(),
           teams: new Set(),
-          statuses: new Set(),
-          rawCount: 0
+          statuses: new Set()
         });
       }
 
       const g = groupedMap.get(groupKey);
-      g.rawCount += 1;
       if (round) g.rounds.add(round);
       teams.forEach(t => g.teams.add(t));
       if (status) g.statuses.add(status);
+
     } else {
-      out.push({
-        type: "raw",
+      singles.push({
         competitionId: row.id ?? row.competitionId ?? competitionName,
         competitionName,
         facility,
@@ -272,7 +261,6 @@ function rebuildDisplayData() {
     const statusesList = sortMixed([...g.statuses]);
 
     return {
-      type: "grouped",
       competitionId: g.competitionId,
       competitionName: g.competitionName,
       facility: g.facility,
@@ -286,14 +274,13 @@ function rebuildDisplayData() {
     };
   });
 
-  DISPLAY = [...out, ...groupedRows];
+  DISPLAY = [...singles, ...groupedRows];
 }
 
 /* ---------------- controls ---------------- */
 
 function buildControls() {
   const el = document.querySelector(".controls");
-
   const sortOptions = SORT_FIELDS.map(f => `<option value="${f.key}">${f.label}</option>`).join("");
 
   el.innerHTML = `
@@ -370,9 +357,8 @@ function buildControls() {
   document.getElementById("sort3Field").value = "competitionName";
   document.getElementById("sort3Dir").value = "asc";
 
-  const tz = document.getElementById("tzToggle");
-  tz.addEventListener("change", () => {
-    USE_FAROE_TZ = tz.checked;
+  document.getElementById("tzToggle").addEventListener("change", (e) => {
+    USE_FAROE_TZ = e.target.checked;
     rebuildDisplayData();
     fillDynamicLists();
     setDefaultFromToday();
@@ -380,12 +366,17 @@ function buildControls() {
   });
 
   document.addEventListener("click", (e) => {
-    const panels = ["panelTeams","panelComps","panelStadiums","panelSort"].map(id => document.getElementById(id));
-    const wrappers = ["pickerTeams","pickerComps","pickerStadiums","pickerSort"].map(id => document.getElementById(id));
-    const clickedInside = wrappers.some(w => w && w.contains(e.target));
+    const ids = ["pickerTeams","pickerComps","pickerStadiums","pickerSort"];
+    const clickedInside = ids.some(id => {
+      const el = document.getElementById(id);
+      return el && el.contains(e.target);
+    });
 
     if (!clickedInside) {
-      panels.forEach(p => p && p.classList.remove("open"));
+      ["panelTeams","panelComps","panelStadiums","panelSort"].forEach(id => {
+        const p = document.getElementById(id);
+        if (p) p.classList.remove("open");
+      });
     }
   });
 
@@ -393,14 +384,13 @@ function buildControls() {
     panelId: "panelTeams",
     items: TEAM_NAMES,
     set: selected.teams,
-    onChange: () => updatePickerButtons()
+    onChange: updatePickerButtons
   });
 }
 
 function togglePanel(panelId) {
   const p = document.getElementById(panelId);
-  if (!p) return;
-  p.classList.toggle("open");
+  if (p) p.classList.toggle("open");
 }
 
 function updatePickerButtons() {
@@ -444,8 +434,7 @@ function buildPanel({ panelId, items, set, onChange }) {
 
     listDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener("change", () => {
-        const item = cb.getAttribute("data-item");
-        const real = decodeHtml(item);
+        const real = decodeHtml(cb.getAttribute("data-item"));
         if (cb.checked) set.add(real);
         else set.delete(real);
         onChange();
@@ -475,14 +464,14 @@ function fillDynamicLists() {
     panelId: "panelComps",
     items: uniq(DISPLAY.map(r => r.competitionName)),
     set: selected.comps,
-    onChange: () => updatePickerButtons()
+    onChange: updatePickerButtons
   });
 
   buildPanel({
     panelId: "panelStadiums",
     items: uniq(DISPLAY.map(r => r.facility)),
     set: selected.stadiums,
-    onChange: () => updatePickerButtons()
+    onChange: updatePickerButtons
   });
 
   updatePickerButtons();
@@ -576,11 +565,7 @@ function render() {
   const thead = document.querySelector("#tbl thead");
   const tbody = document.querySelector("#tbl tbody");
 
-  thead.innerHTML = `
-    <tr>
-      ${cols.map(c => `<th class="${c.className}">${c.label}</th>`).join("")}
-    </tr>
-  `;
+  thead.innerHTML = `<tr>${cols.map(c => `<th class="${c.className}">${c.label}</th>`).join("")}</tr>`;
 
   tbody.innerHTML = VIEW.map(r => `
     <tr>
@@ -628,7 +613,7 @@ function downloadCSV() {
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "fsf_matches_view.csv";
+  a.download = "dystaryvirlit.csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
