@@ -279,6 +279,10 @@ tbody tr:hover td{
   white-space: nowrap;
 }
 
+.col-pitch{
+  white-space: nowrap;
+}
+
 .col-status{
   white-space: nowrap;
 }
