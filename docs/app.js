@@ -555,11 +555,11 @@ function render() {
   const cols = [
     { key: "competitionName", label: "Competition", className: "col-comp" },
     { key: "roundsText", label: "Round", className: "col-round" },
-    { key: "matchText", label: "Match / Teams", className: "" },
+    { key: "matchText", label: "Match / Teams", className: "col-match" },
     { key: "facility", label: "Stadium", className: "col-stadium" },
     { key: "matchDate", label: "Date", className: "col-date" },
     { key: "weekday", label: "Weekday", className: "col-weekday" },
-    { key: "statusText", label: "Status", className: "" }
+    { key: "statusText", label: "Status", className: "col-status" }
   ];
 
   const thead = document.querySelector("#tbl thead");
