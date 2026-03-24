@@ -281,6 +281,11 @@ tbody tr:hover td{
   white-space: nowrap;
 }
 
+.col-match{
+  min-width: 300px;
+  white-space: nowrap;
+}
+
 .col-stadium{
   min-width: 220px;
   white-space: nowrap;
@@ -288,6 +293,11 @@ tbody tr:hover td{
 
 .col-comp{
   min-width: 300px;
+  white-space: nowrap;
+}
+
+.col-status{
+  min-width: 180px;
   white-space: nowrap;
 }
 
