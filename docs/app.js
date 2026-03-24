@@ -613,7 +613,7 @@ function downloadCSV() {
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "dystaryvirlit.csv";
+  a.download = "fsf_matches_view.csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
