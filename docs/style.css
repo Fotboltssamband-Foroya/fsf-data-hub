@@ -287,7 +287,7 @@ tbody tr:hover td{
 }
 
 .col-comp{
-  min-width: 220px;
+  min-width: 300px;
   white-space: nowrap;
 }
 
