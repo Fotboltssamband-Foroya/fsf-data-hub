@@ -21,6 +21,7 @@ const SORT_FIELDS = [
   { key: "roundsText", label: "Round" },
   { key: "matchText", label: "Match / Teams" },
   { key: "facility", label: "Stadium" },
+  { key: "pitchText", label: "Pitch" },
   { key: "matchDate", label: "Date" },
   { key: "weekday", label: "Weekday" },
   { key: "statusText", label: "Status" }
@@ -176,6 +177,7 @@ function textMatch(row, q) {
     row.competitionName,
     row.matchText,
     row.facility,
+    row.pitchText,
     row.weekday,
     row.roundsText,
     row.statusText
@@ -185,6 +187,15 @@ function textMatch(row, q) {
 
 function shouldGroupCompetition(name) {
   const n = norm(name);
+
+  // Explicit exceptions: NEVER group these
+  if (
+    n.includes("steypakapping u13 gentur 2026") ||
+    n.includes("steypakapping u13 dreingir 2026")
+  ) {
+    return false;
+  }
+
   return (
     n.includes("gentur u16 ½ vøll 2026") ||
     n.includes("old boys +35") ||
@@ -215,6 +226,7 @@ function rebuildDisplayData() {
     const teams = extractTeams(row.matchDescription);
     const status = String(row.matchStatus ?? "").trim();
     const round = row.round !== undefined && row.round !== null ? String(row.round).trim() : "";
+    const pitch = String(row.field ?? "").trim();
 
     if (shouldGroupCompetition(competitionName)) {
       const compId = row.id ?? row.competitionId ?? competitionName;
@@ -230,6 +242,7 @@ function rebuildDisplayData() {
           weekday,
           rounds: new Set(),
           teams: new Set(),
+          pitches: new Set(),
           statuses: new Set()
         });
       }
@@ -237,6 +250,7 @@ function rebuildDisplayData() {
       const g = groupedMap.get(groupKey);
       if (round) g.rounds.add(round);
       teams.forEach(t => g.teams.add(t));
+      if (pitch) g.pitches.add(pitch);
       if (status) g.statuses.add(status);
 
     } else {
@@ -244,6 +258,7 @@ function rebuildDisplayData() {
         competitionId: row.id ?? row.competitionId ?? competitionName,
         competitionName,
         facility,
+        pitchText: pitch,
         matchDate: row.matchDate,
         dateKey: dk,
         weekday,
@@ -258,12 +273,14 @@ function rebuildDisplayData() {
   const groupedRows = [...groupedMap.values()].map(g => {
     const teamsList = sortMixed([...g.teams]);
     const roundsList = sortMixed([...g.rounds]);
+    const pitchesList = sortMixed([...g.pitches]);
     const statusesList = sortMixed([...g.statuses]);
 
     return {
       competitionId: g.competitionId,
       competitionName: g.competitionName,
       facility: g.facility,
+      pitchText: joinHuman(pitchesList),
       matchDate: g.matchDate,
       dateKey: g.dateKey,
       weekday: g.weekday,
@@ -557,6 +574,7 @@ function render() {
     { key: "roundsText", label: "Round", className: "col-round" },
     { key: "matchText", label: "Match / Teams", className: "col-match" },
     { key: "facility", label: "Stadium", className: "col-stadium" },
+    { key: "pitchText", label: "Pitch", className: "col-pitch" },
     { key: "matchDate", label: "Date", className: "col-date" },
     { key: "weekday", label: "Weekday", className: "col-weekday" },
     { key: "statusText", label: "Status", className: "col-status" }
@@ -567,13 +585,13 @@ function render() {
 
   thead.innerHTML = `<tr>${cols.map(c => `<th class="${c.className}">${c.label}</th>`).join("")}</tr>`;
 
-
-    tbody.innerHTML = VIEW.map(r => `
+  tbody.innerHTML = VIEW.map(r => `
     <tr>
       <td class="col-comp">${escapeHtml(r.competitionName || "")}</td>
       <td class="col-round">${escapeHtml(r.roundsText || "")}</td>
       <td class="col-match">${escapeHtml(r.matchText || "")}</td>
       <td class="col-stadium">${escapeHtml(r.facility || "")}</td>
+      <td class="col-pitch">${escapeHtml(r.pitchText || "")}</td>
       <td class="col-date">${escapeHtml(formatDate(r.matchDate))}</td>
       <td class="col-weekday">${escapeHtml(r.weekday || "")}</td>
       <td class="col-status">${escapeHtml(r.statusText || "")}</td>
@@ -599,6 +617,7 @@ function downloadCSV() {
     ["roundsText", "Round"],
     ["matchText", "Match / Teams"],
     ["facility", "Stadium"],
+    ["pitchText", "Pitch"],
     ["matchDate", "Date"],
     ["weekday", "Weekday"],
     ["statusText", "Status"]
