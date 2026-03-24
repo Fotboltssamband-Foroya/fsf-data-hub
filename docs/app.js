@@ -556,7 +556,7 @@ function render() {
     { key: "competitionName", label: "Competition", className: "" },
     { key: "roundsText", label: "Round", className: "col-round" },
     { key: "matchText", label: "Match / Teams", className: "" },
-    { key: "facility", label: "Stadium", className: "" },
+    { key: "facility", label: "Stadium", className: "col-stadium" },
     { key: "matchDate", label: "Date", className: "col-date" },
     { key: "weekday", label: "Weekday", className: "col-weekday" },
     { key: "statusText", label: "Status", className: "" }
