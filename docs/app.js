@@ -391,27 +391,41 @@ function buildControls() {
   document.getElementById("sort2Dir").value = "asc";
   document.getElementById("sort3Field").value = "competitionName";
   document.getElementById("sort3Dir").value = "asc";
-  
-  // auto apply filters
-  ["q", "from", "to", "source"].forEach(id => {
-    const el = document.getElementById(id);
+   
+  // SEARCH
+  const qInput = document.getElementById("q");
 
-    if (!el) return;
+  if (qInput) {
 
-    // Enter key still works
-    el.addEventListener("keydown", (e) => {
+    // instant typing
+    qInput.addEventListener("input", () => {
+      applyFilters();
+    });
+
+    // Enter key
+    qInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         applyFilters();
       }
     });
+  }
 
-    // auto update
-    el.addEventListener("input", () => {
+  // DATE + SOURCE
+  ["from", "to", "source"].forEach(id => {
+    const el = document.getElementById(id);
+
+    if (!el) return;
+
+    // changing dropdown/date
+    el.addEventListener("change", () => {
       applyFilters();
     });
 
-    el.addEventListener("change", () => {
-      applyFilters();
+    // Enter key
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        applyFilters();
+      }
     });
   });
  
