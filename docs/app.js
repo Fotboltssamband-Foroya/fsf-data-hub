@@ -429,7 +429,6 @@ function buildControls() {
     });
   });
  
-  });
   document.getElementById("tzToggle").addEventListener("change", (e) => {
     USE_FAROE_TZ = e.target.checked;
     rebuildDisplayData();
