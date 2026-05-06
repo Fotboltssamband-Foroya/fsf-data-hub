@@ -495,16 +495,20 @@ function buildPanel({ panelId, items, set, onChange }) {
 }
 
 function fillDynamicLists() {
+
+  // only use NATIONAL rows for filter lists
+  const nationalRows = DISPLAY.filter(r => r.source === "National");
+
   buildPanel({
     panelId: "panelComps",
-    items: uniq(DISPLAY.map(r => r.competitionName)),
+    items: uniq(nationalRows.map(r => r.competitionName)),
     set: selected.comps,
     onChange: updatePickerButtons
   });
 
   buildPanel({
     panelId: "panelStadiums",
-    items: uniq(DISPLAY.map(r => r.facility)),
+    items: uniq(nationalRows.map(r => r.facility)),
     set: selected.stadiums,
     onChange: updatePickerButtons
   });
