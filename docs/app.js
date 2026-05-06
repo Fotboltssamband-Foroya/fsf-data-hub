@@ -391,7 +391,20 @@ function buildControls() {
   document.getElementById("sort2Dir").value = "asc";
   document.getElementById("sort3Field").value = "competitionName";
   document.getElementById("sort3Dir").value = "asc";
+  
+  // press Enter to apply filters
+  ["q", "from", "to", "source"].forEach(id => {
+    const el = document.getElementById(id);
 
+    if (!el) return;
+
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        applyFilters();
+      }
+    });
+ 
+  });
   document.getElementById("tzToggle").addEventListener("change", (e) => {
     USE_FAROE_TZ = e.target.checked;
     rebuildDisplayData();
