@@ -392,17 +392,28 @@ function buildControls() {
   document.getElementById("sort3Field").value = "competitionName";
   document.getElementById("sort3Dir").value = "asc";
   
-  // press Enter to apply filters
+  // auto apply filters
   ["q", "from", "to", "source"].forEach(id => {
     const el = document.getElementById(id);
 
     if (!el) return;
 
+    // Enter key still works
     el.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         applyFilters();
       }
     });
+
+    // auto update
+    el.addEventListener("input", () => {
+      applyFilters();
+    });
+
+    el.addEventListener("change", () => {
+      applyFilters();
+    });
+  });
  
   });
   document.getElementById("tzToggle").addEventListener("change", (e) => {
@@ -466,6 +477,7 @@ function buildPanel({ panelId, items, set, onChange }) {
     <div data-list="1"></div>
   `;
 
+
   const filterInput = panel.querySelector('input[data-filter="1"]');
   const listDiv = panel.querySelector('div[data-list="1"]');
   const btnAll = panel.querySelector('button[data-all="1"]');
@@ -483,9 +495,11 @@ function buildPanel({ panelId, items, set, onChange }) {
     listDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener("change", () => {
         const real = decodeHtml(cb.getAttribute("data-item"));
-        if (cb.checked) set.add(real);
+                if (cb.checked) set.add(real);
         else set.delete(real);
+
         onChange();
+        applyFilters();
       });
     });
   }
