@@ -174,9 +174,10 @@ function matchesAnySelectedTeam(row) {
     const w = norm(wanted);
 
     for (const team of hayTeams) {
+      const t = norm(team);
 
-      // exact match only
-      if (norm(team) === w) {
+      // exact OR starts with "ÍF "
+      if (t === w || t.startsWith(w + " ")) {
         return true;
       }
     }
