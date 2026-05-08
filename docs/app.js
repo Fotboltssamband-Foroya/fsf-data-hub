@@ -172,10 +172,16 @@ function matchesAnySelectedTeam(row) {
 
   for (const wanted of selected.teams) {
     const w = norm(wanted);
+
     for (const team of hayTeams) {
-      if (norm(team).includes(w)) return true;
+
+      // exact match only
+      if (norm(team) === w) {
+        return true;
+      }
     }
   }
+
   return false;
 }
 
