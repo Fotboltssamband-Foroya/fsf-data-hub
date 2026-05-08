@@ -239,7 +239,8 @@ function rebuildDisplayData() {
 
     if (shouldGroupCompetition(competitionName)) {
       const compId = row.id ?? row.competitionId ?? competitionName;
-      const groupKey = `${compId}||${dk}||${facility}||${source}`;
+      const timeKey = String(row.matchDate ?? "");
+const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
 
       if (!groupedMap.has(groupKey)) {
         groupedMap.set(groupKey, {
