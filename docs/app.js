@@ -699,9 +699,9 @@ function downloadCSV() {
     ["source", "Source"]
   ];
 
-  const header = columns.map(c => csvEscape(c[1])).join(",");
+  const header = columns.map(c => csvEscape(c[1])).join(";");
   const lines = VIEW.map(r =>
-    columns.map(([key]) => key === "matchDate" ? csvEscape(formatDate(r.matchDate)) : csvEscape(r[key])).join(",")
+    columns.map(([key]) => key === "matchDate" ? csvEscape(formatDate(r.matchDate)) : csvEscape(r[key])).join(";")
   );
 
   const csv = [header, ...lines].join("\n");
