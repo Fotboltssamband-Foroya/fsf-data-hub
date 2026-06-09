@@ -680,39 +680,34 @@ function render() {
 
 /* ---------------- CSV ---------------- */
 
-function csvEscape(v) {
-  const s = String(v ?? "");
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
+function downloadExcel() {
 
-function downloadCSV() {
-  const columns = [
-    ["competitionName", "Competition"],
-    ["roundsText", "Round"],
-    ["matchText", "Match / Teams"],
-    ["facility", "Stadium"],
-    ["pitchText", "Pitch"],
-    ["matchDate", "Date"],
-    ["weekday", "Weekday"],
-    ["statusText", "Status"],
-    ["source", "Source"]
-  ];
+  const data = VIEW.map(r => ({
+    Competition: r.competitionName,
+    Round: r.roundsText,
+    "Match / Teams": r.matchText,
+    Stadium: r.facility,
+    Pitch: r.pitchText,
+    Date: formatDate(r.matchDate),
+    Weekday: r.weekday,
+    Status: r.statusText,
+    Source: r.source
+  }));
 
-  const header = columns.map(c => csvEscape(c[1])).join(";");
-  const lines = VIEW.map(r =>
-    columns.map(([key]) => key === "matchDate" ? csvEscape(formatDate(r.matchDate)) : csvEscape(r[key])).join(";")
+  const worksheet = XLSX.utils.json_to_sheet(data);
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Matches"
   );
 
-  const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "fsf_matches_view.csv";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  XLSX.writeFile(
+    workbook,
+    "fsf_matches.xlsx"
+  );
 }
 
 /* ---------------- html helpers ---------------- */
