@@ -13,7 +13,7 @@ if not NATIONAL_KEY:
 if not INTERNATIONAL_KEY:
     raise Exception("Missing FSF_INT_MATCHES_API_KEY")
 
-PAGE_SIZE = 500
+PAGE_SIZE = 25
 
 def build_url(api_key, page):
     return f"https://comet.fsf.fo/data-backend/api/public/areports/run/{page}/{PAGE_SIZE}/?API_KEY={api_key}"
