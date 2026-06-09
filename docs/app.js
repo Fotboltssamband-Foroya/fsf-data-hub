@@ -85,6 +85,7 @@ function formatWeekday(ms) {
   const opts = USE_FAROE_TZ
     ? { weekday: "long", timeZone: "Atlantic/Faroe" }
     : { weekday: "long" };
+
   const day = new Intl.DateTimeFormat("fo-FO", opts).format(new Date(Number(ms)));
   return day.charAt(0).toUpperCase() + day.slice(1);
 }
@@ -141,6 +142,7 @@ function sortMixed(arr) {
     const bn = Number(b);
     const aNum = !isNaN(an);
     const bNum = !isNaN(bn);
+
     if (aNum && bNum) return an - bn;
     return String(a).localeCompare(String(b));
   });
@@ -148,10 +150,15 @@ function sortMixed(arr) {
 
 function compareValues(a, b, direction) {
   const dir = direction === "desc" ? -1 : 1;
+
   if (a === b) return 0;
   if (a === null || a === undefined) return 1 * dir;
   if (b === null || b === undefined) return -1 * dir;
-  if (typeof a === "number" && typeof b === "number") return (a - b) * dir;
+
+  if (typeof a === "number" && typeof b === "number") {
+    return (a - b) * dir;
+  }
+
   return String(a).localeCompare(String(b)) * dir;
 }
 
@@ -181,7 +188,6 @@ function matchesAnySelectedTeam(row) {
     for (const team of hayTeams) {
       const t = norm(team);
 
-      // exact OR starts with "ÍF "
       if (t === w || t.startsWith(w + " ")) {
         return true;
       }
@@ -193,6 +199,7 @@ function matchesAnySelectedTeam(row) {
 
 function textMatch(row, q) {
   if (!q) return true;
+
   const hay = [
     row.competitionName,
     row.matchText,
@@ -203,6 +210,7 @@ function textMatch(row, q) {
     row.statusText,
     row.source
   ].map(norm).join(" ");
+
   return hay.includes(q);
 }
 
@@ -248,11 +256,12 @@ function rebuildDisplayData() {
     const round = row.round !== undefined && row.round !== null ? String(row.round).trim() : "";
     const pitch = String(row.field ?? "").trim();
     const source = String(row.source ?? "").trim();
+    const matchId = row.matchId;
 
     if (shouldGroupCompetition(competitionName)) {
       const compId = row.id ?? row.competitionId ?? competitionName;
       const timeKey = String(row.matchDate ?? "");
-const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
+      const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
 
       if (!groupedMap.has(groupKey)) {
         groupedMap.set(groupKey, {
@@ -266,15 +275,18 @@ const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
           teams: new Set(),
           pitches: new Set(),
           statuses: new Set(),
+          matchIds: new Set(),
           source
         });
       }
 
       const g = groupedMap.get(groupKey);
+
       if (round) g.rounds.add(round);
       teams.forEach(t => g.teams.add(t));
       if (pitch) g.pitches.add(pitch);
       if (status) g.statuses.add(status);
+      if (matchId) g.matchIds.add(matchId);
 
     } else {
       singles.push({
@@ -289,7 +301,9 @@ const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
         teamsList: teams,
         matchText: String(row.matchDescription ?? "").trim(),
         statusText: status,
-        source
+        source,
+        matchId,
+        cometUrl: cometMatchUrl(matchId)
       });
     }
   }
@@ -299,6 +313,7 @@ const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
     const roundsList = sortMixed([...g.rounds]);
     const pitchesList = sortMixed([...g.pitches]);
     const statusesList = sortMixed([...g.statuses]);
+    const matchIds = [...g.matchIds];
 
     return {
       competitionId: g.competitionId,
@@ -312,7 +327,9 @@ const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
       roundsText: joinHuman(roundsList),
       matchText: joinHuman(teamsList),
       statusText: joinHuman(statusesList),
-      source: g.source
+      source: g.source,
+      matchIds,
+      cometUrl: matchIds.length === 1 ? cometMatchUrl(matchIds[0]) : ""
     };
   });
 
@@ -404,44 +421,28 @@ function buildControls() {
   document.getElementById("sort2Dir").value = "asc";
   document.getElementById("sort3Field").value = "competitionName";
   document.getElementById("sort3Dir").value = "asc";
-   
-  // SEARCH
+
   const qInput = document.getElementById("q");
 
   if (qInput) {
+    qInput.addEventListener("input", () => applyFilters());
 
-    // instant typing
-    qInput.addEventListener("input", () => {
-      applyFilters();
-    });
-
-    // Enter key
     qInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        applyFilters();
-      }
+      if (e.key === "Enter") applyFilters();
     });
   }
 
-  // DATE + SOURCE
   ["from", "to", "source"].forEach(id => {
-    const el = document.getElementById(id);
+    const input = document.getElementById(id);
+    if (!input) return;
 
-    if (!el) return;
+    input.addEventListener("change", () => applyFilters());
 
-    // changing dropdown/date
-    el.addEventListener("change", () => {
-      applyFilters();
-    });
-
-    // Enter key
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        applyFilters();
-      }
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") applyFilters();
     });
   });
- 
+
   document.getElementById("tzToggle").addEventListener("change", (e) => {
     USE_FAROE_TZ = e.target.checked;
     rebuildDisplayData();
@@ -453,8 +454,8 @@ function buildControls() {
   document.addEventListener("click", (e) => {
     const ids = ["pickerTeams","pickerComps","pickerStadiums","pickerSort"];
     const clickedInside = ids.some(id => {
-      const el = document.getElementById(id);
-      return el && el.contains(e.target);
+      const elem = document.getElementById(id);
+      return elem && elem.contains(e.target);
     });
 
     if (!clickedInside) {
@@ -482,6 +483,7 @@ function updatePickerButtons() {
   const btnTeams = document.querySelector("#pickerTeams button");
   const btnComps = document.querySelector("#pickerComps button");
   const btnStad = document.querySelector("#pickerStadiums button");
+
   if (btnTeams) btnTeams.textContent = `Teams (${selected.teams.size})`;
   if (btnComps) btnComps.textContent = `Competitions (${selected.comps.size})`;
   if (btnStad) btnStad.textContent = `Stadiums (${selected.stadiums.size})`;
@@ -492,6 +494,7 @@ function buildPanel({ panelId, items, set, onChange }) {
   if (!panel) return;
 
   const safeItems = items.slice();
+
   panel.innerHTML = `
     <div class="row">
       <input type="text" placeholder="Filter list…" data-filter="1">
@@ -502,7 +505,6 @@ function buildPanel({ panelId, items, set, onChange }) {
     </div>
     <div data-list="1"></div>
   `;
-
 
   const filterInput = panel.querySelector('input[data-filter="1"]');
   const listDiv = panel.querySelector('div[data-list="1"]');
@@ -521,7 +523,8 @@ function buildPanel({ panelId, items, set, onChange }) {
     listDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener("change", () => {
         const real = decodeHtml(cb.getAttribute("data-item"));
-                if (cb.checked) set.add(real);
+
+        if (cb.checked) set.add(real);
         else set.delete(real);
 
         onChange();
@@ -536,20 +539,20 @@ function buildPanel({ panelId, items, set, onChange }) {
     safeItems.forEach(x => set.add(x));
     onChange();
     renderList();
+    applyFilters();
   });
 
   btnNone.addEventListener("click", () => {
     set.clear();
     onChange();
     renderList();
+    applyFilters();
   });
 
   renderList();
 }
 
 function fillDynamicLists() {
-
-  // only use NATIONAL rows for filter lists
   const nationalRows = DISPLAY.filter(r => r.source === "National");
 
   buildPanel({
@@ -592,6 +595,7 @@ function applySort(data) {
       const result = compareValues(a[s.field], b[s.field], s.dir);
       if (result !== 0) return result;
     }
+
     return 0;
   });
 
@@ -619,6 +623,7 @@ function applyFilters() {
     }
 
     if (!textMatch(r, q)) return false;
+
     return true;
   });
 
@@ -634,6 +639,7 @@ function resetFilters() {
   const q = document.getElementById("q");
   const to = document.getElementById("to");
   const source = document.getElementById("source");
+
   if (q) q.value = "";
   if (to) to.value = "";
   if (source) source.value = "";
@@ -657,7 +663,8 @@ function render() {
     { key: "matchDate", label: "Date", className: "col-date" },
     { key: "weekday", label: "Weekday", className: "col-weekday" },
     { key: "statusText", label: "Status", className: "col-status" },
-    { key: "source", label: "Source", className: "col-source" }
+    { key: "source", label: "Source", className: "col-source" },
+    { key: "cometUrl", label: "COMET", className: "col-comet" }
   ];
 
   const thead = document.querySelector("#tbl thead");
@@ -676,6 +683,9 @@ function render() {
       <td class="col-weekday">${escapeHtml(r.weekday || "")}</td>
       <td class="col-status">${escapeHtml(r.statusText || "")}</td>
       <td class="col-source">${escapeHtml(r.source || "")}</td>
+      <td class="col-comet">
+        ${r.cometUrl ? `<a href="${escapeHtml(r.cometUrl)}" target="_blank" rel="noopener">Open</a>` : ""}
+      </td>
     </tr>
   `).join("");
 
@@ -683,10 +693,9 @@ function render() {
     `${VIEW.length} rows shown (${RAW.length} total raw matches loaded)`;
 }
 
-/* ---------------- CSV ---------------- */
+/* ---------------- Excel export ---------------- */
 
 function downloadExcel() {
-
   const data = VIEW.map(r => ({
     Competition: r.competitionName,
     Round: r.roundsText,
@@ -696,23 +705,15 @@ function downloadExcel() {
     Date: formatDate(r.matchDate),
     Weekday: r.weekday,
     Status: r.statusText,
-    Source: r.source
+    Source: r.source,
+    COMET: r.cometUrl || ""
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(data);
-
   const workbook = XLSX.utils.book_new();
 
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Matches"
-  );
-
-  XLSX.writeFile(
-    workbook,
-    "fsf_matches.xlsx"
-  );
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Matches");
+  XLSX.writeFile(workbook, "fsf_matches.xlsx");
 }
 
 /* ---------------- html helpers ---------------- */
