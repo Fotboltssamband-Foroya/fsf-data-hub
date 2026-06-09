@@ -390,7 +390,7 @@ function buildControls() {
 
     <button type="button" onclick="applyFilters()">Apply</button>
     <button type="button" onclick="resetFilters()">Reset</button>
-    <button type="button" onclick="downloadCSV()">Export CSV</button>
+    <button type="button" onclick="downloadExcel()">Export Excel</button>
   `;
 
   document.getElementById("sort1Field").value = "matchDate";
