@@ -267,6 +267,7 @@ tbody tr:hover td{
 }
 
 /* requested column sizing */
+
 .col-round{
   white-space: nowrap;
 }
@@ -285,6 +286,24 @@ tbody tr:hover td{
 
 .col-status{
   white-space: nowrap;
+}
+
+.col-source{
+  white-space: nowrap;
+}
+
+.col-comet{
+  white-space: nowrap;
+}
+
+.col-comet a{
+  color:#93c5fd;
+  text-decoration:none;
+  font-weight:600;
+}
+
+.col-comet a:hover{
+  text-decoration:underline;
 }
 
 @media (max-width: 720px){
