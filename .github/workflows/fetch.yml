@@ -1,8 +1,8 @@
 name: Fetch FSF matches
 
 on:
-  schedule:
-    - cron: "30 4 * * *"   # daily 04:30 UTC
+schedule:
+  - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 permissions:
