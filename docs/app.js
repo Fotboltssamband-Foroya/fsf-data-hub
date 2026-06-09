@@ -53,6 +53,11 @@ async function loadData() {
 
 /* ---------------- helpers ---------------- */
 
+function cometMatchUrl(matchId) {
+  if (!matchId) return "";
+  return `https://comet.fsf.fo/resources/jsf/match/index.xhtml?id=${matchId}`;
+}
+
 function uniq(arr) {
   return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
     .map(v => String(v).trim())
