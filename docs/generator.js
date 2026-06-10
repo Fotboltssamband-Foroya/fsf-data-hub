@@ -61,24 +61,24 @@ function generate() {
     const rounds = roundRobin(teams);
 
     rounds.forEach((matches, index) => {
-      matches.forEach(m => {
-        let home = m.home;
-        let away = m.away;
+  matches.forEach((m, matchIndex) => {
+    let home = m.home;
+    let away = m.away;
 
-        if (cycle % 2 === 1) {
-          home = m.away;
-          away = m.home;
-        }
+    if (cycle % 2 === 1) {
+      home = m.away;
+      away = m.home;
+    }
 
-        SCHEDULE.push({
-          umfar: index + 1 + (cycle * rounds.length),
-          heimalið: home,
-          úrslit: "-",
-          útilið: away,
-          vøllur: venue
-        });
-      });
+    SCHEDULE.push({
+      umfar: index + 1 + (cycle * rounds.length),
+      heimalið: home,
+      úrslit: "-",
+      útilið: away,
+      vøllur: `Vøllur ${matchIndex + 1}`
     });
+  });
+});
   }
 
   render();
