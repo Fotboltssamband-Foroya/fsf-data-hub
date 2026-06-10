@@ -58,6 +58,11 @@ function cometMatchUrl(matchId) {
   return `https://comet.fsf.fo/resources/jsf/match/index.xhtml?id=${matchId}`;
 }
 
+function cometCompetitionUrl(competitionId) {
+  if (!competitionId) return "";
+  return `https://comet.fsf.fo/resources/jsf/competition/index.xhtml?id=${competitionId}`;
+}
+
 function uniq(arr) {
   return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
     .map(v => String(v).trim())
@@ -302,8 +307,10 @@ function rebuildDisplayData() {
         matchText: String(row.matchDescription ?? "").trim(),
         statusText: status,
         source,
-        matchId,
-        cometUrl: cometMatchUrl(matchId)
+          source,
+  matchId: row.matchId,
+  cometUrl: cometMatchUrl(row.matchId),
+  cometLabel: "Match"
       });
     }
   }
@@ -330,6 +337,10 @@ function rebuildDisplayData() {
       source: g.source,
       matchIds,
       cometUrl: matchIds.length === 1 ? cometMatchUrl(matchIds[0]) : ""
+        source: g.source,
+  cometUrl: cometCompetitionUrl(g.competitionId),
+  cometLabel: "Competition"
+};
     };
   });
 
@@ -664,7 +675,8 @@ function render() {
     { key: "weekday", label: "Weekday", className: "col-weekday" },
     { key: "statusText", label: "Status", className: "col-status" },
     { key: "source", label: "Source", className: "col-source" },
-    { key: "cometUrl", label: "COMET", className: "col-comet" }
+    { key: "cometUrl", label: "COMET", className: "col-comet" },
+    { key: "comet", label: "COMET", className: "col-comet" }
   ];
 
   const thead = document.querySelector("#tbl thead");
@@ -683,6 +695,12 @@ function render() {
       <td class="col-weekday">${escapeHtml(r.weekday || "")}</td>
       <td class="col-status">${escapeHtml(r.statusText || "")}</td>
       <td class="col-source">${escapeHtml(r.source || "")}</td>
+      <td class="col-comet">
+  ${r.cometUrl
+    ? `<a href="${r.cometUrl}" target="_blank" rel="noopener">${r.cometLabel}</a>`
+    : ""
+  }
+</td>
       <td class="col-comet">
         ${r.cometUrl ? `<a href="${escapeHtml(r.cometUrl)}" target="_blank" rel="noopener">Open</a>` : ""}
       </td>
