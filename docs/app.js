@@ -58,6 +58,14 @@ function cometMatchUrl(matchId) {
   return `https://comet.fsf.fo/resources/jsf/match/index.xhtml?id=${matchId}`;
 }
 
+function generatorUrl(row) {
+  const teams = (row.teamsList || []).join("|");
+
+  return `generator.html?competition=${encodeURIComponent(row.competitionName || "")}` +
+    `&venue=${encodeURIComponent(row.facility || "")}` +
+    `&teams=${encodeURIComponent(teams)}`;
+}
+
 function cometCompetitionUrl(competitionId) {
   if (!competitionId) return "";
   return `https://comet.fsf.fo/resources/jsf/competition/index.xhtml?id=${competitionId}`;
@@ -675,6 +683,13 @@ function render() {
     { key: "comet", label: "COMET", className: "col-comet" }
   ];
 
+<td class="col-comet">
+  ${r.teamsList && r.teamsList.length > 2
+    ? `<a href="${escapeHtml(generatorUrl(r))}" target="_blank" rel="noopener">Generator</a>`
+    : ""
+  }
+</td>
+  
   const thead = document.querySelector("#tbl thead");
   const tbody = document.querySelector("#tbl tbody");
 
