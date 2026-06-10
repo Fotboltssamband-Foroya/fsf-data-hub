@@ -75,7 +75,7 @@ function generate() {
       heimalið: home,
       úrslit: "-",
       útilið: away,
-      vøllur: `Vøllur ${matchIndex + 1}`
+      vøllur: `${matchIndex + 1}`
     });
   });
 });
