@@ -262,9 +262,10 @@ function rebuildDisplayData() {
     const pitch = String(row.field ?? "").trim();
     const source = String(row.source ?? "").trim();
     const matchId = row.matchId;
+    const competitionId = row.id ?? row.competitionId ?? "";
 
     if (shouldGroupCompetition(competitionName)) {
-      const compId = row.id ?? row.competitionId ?? competitionName;
+      const compId = competitionId || competitionName;
       const timeKey = String(row.matchDate ?? "");
       const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
 
@@ -295,7 +296,7 @@ function rebuildDisplayData() {
 
     } else {
       singles.push({
-        competitionId: row.id ?? row.competitionId ?? competitionName,
+        competitionId,
         competitionName,
         facility,
         pitchText: pitch,
@@ -307,10 +308,9 @@ function rebuildDisplayData() {
         matchText: String(row.matchDescription ?? "").trim(),
         statusText: status,
         source,
-          source,
-  matchId: row.matchId,
-  cometUrl: cometMatchUrl(row.matchId),
-  cometLabel: "Match"
+        matchId,
+        cometUrl: cometMatchUrl(matchId),
+        cometLabel: "Match"
       });
     }
   }
@@ -336,11 +336,8 @@ function rebuildDisplayData() {
       statusText: joinHuman(statusesList),
       source: g.source,
       matchIds,
-      cometUrl: matchIds.length === 1 ? cometMatchUrl(matchIds[0]) : ""
-        source: g.source,
-  cometUrl: cometCompetitionUrl(g.competitionId),
-  cometLabel: "Competition"
-};
+      cometUrl: cometCompetitionUrl(g.competitionId),
+      cometLabel: "Competition"
     };
   });
 
@@ -675,7 +672,6 @@ function render() {
     { key: "weekday", label: "Weekday", className: "col-weekday" },
     { key: "statusText", label: "Status", className: "col-status" },
     { key: "source", label: "Source", className: "col-source" },
-    { key: "cometUrl", label: "COMET", className: "col-comet" },
     { key: "comet", label: "COMET", className: "col-comet" }
   ];
 
@@ -696,13 +692,10 @@ function render() {
       <td class="col-status">${escapeHtml(r.statusText || "")}</td>
       <td class="col-source">${escapeHtml(r.source || "")}</td>
       <td class="col-comet">
-  ${r.cometUrl
-    ? `<a href="${r.cometUrl}" target="_blank" rel="noopener">${r.cometLabel}</a>`
-    : ""
-  }
-</td>
-      <td class="col-comet">
-        ${r.cometUrl ? `<a href="${escapeHtml(r.cometUrl)}" target="_blank" rel="noopener">Open</a>` : ""}
+        ${r.cometUrl
+          ? `<a href="${escapeHtml(r.cometUrl)}" target="_blank" rel="noopener">${escapeHtml(r.cometLabel || "Open")}</a>`
+          : ""
+        }
       </td>
     </tr>
   `).join("");
