@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fo">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>FSF – Tournament Generator</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Tournament Generator</h1>
+        <div class="sub">Ger dystarskrá út frá valdum liðum.</div>
+      </div>
+    </header>
+
+    <div class="controls">
+      <input id="competitionName" placeholder="Competition name">
+      <input id="venue" placeholder="Vøllur">
+      <input id="roundCount" type="number" min="1" value="1" style="width:120px">
+      <button onclick="generate()">Generate</button>
+      <button onclick="exportExcel()">Export Excel</button>
+    </div>
+
+    <p class="sub">Teams, one per line:</p>
+    <textarea id="teamsInput" style="width:100%;min-height:180px;border-radius:14px;padding:12px;"></textarea>
+
+    <p id="note"></p>
+
+    <div class="tableWrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>Umfar</th>
+            <th>Heimalið</th>
+            <th>Úrslit</th>
+            <th>Útilið</th>
+            <th>Vøllur</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script src="generator.js"></script>
+  </div>
+</body>
+</html>
