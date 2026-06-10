@@ -17,9 +17,22 @@
     </header>
 
     <div class="controls">
-      <input id="competitionName" placeholder="Competition name">
-      <input id="venue" placeholder="Vøllur">
-      <input id="roundCount" type="number" min="1" value="1" style="width:120px">
+      <input id="competitionName" type="text" placeholder="Competition name">
+      <input id="venue" type="text" placeholder="Vøllur">
+
+      <select id="roundRobinType">
+        <option value="1">Single Round Robin</option>
+        <option value="2">Double Round Robin</option>
+        <option value="3">Triple Round Robin</option>
+      </select>
+
+      <input id="maxRounds" type="number" min="1" placeholder="Max rounds" style="width:130px">
+
+      <label>
+        <input id="preferAvoidSameClub" type="checkbox" checked>
+        Avoid same-club rounds
+      </label>
+
       <button onclick="generate()">Generate</button>
       <button onclick="exportExcel()">Export Excel</button>
     </div>
