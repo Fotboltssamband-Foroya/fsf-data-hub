@@ -680,16 +680,10 @@ function render() {
     { key: "weekday", label: "Weekday", className: "col-weekday" },
     { key: "statusText", label: "Status", className: "col-status" },
     { key: "source", label: "Source", className: "col-source" },
-    { key: "comet", label: "COMET", className: "col-comet" }
+    { key: "comet", label: "COMET", className: "col-comet" },
+    { key: "generator", label: "Generator", className: "col-comet" }
   ];
 
-<td class="col-comet">
-  ${r.teamsList && r.teamsList.length > 2
-    ? `<a href="${escapeHtml(generatorUrl(r))}" target="_blank" rel="noopener">Generator</a>`
-    : ""
-  }
-</td>
-  
   const thead = document.querySelector("#tbl thead");
   const tbody = document.querySelector("#tbl tbody");
 
@@ -706,9 +700,17 @@ function render() {
       <td class="col-weekday">${escapeHtml(r.weekday || "")}</td>
       <td class="col-status">${escapeHtml(r.statusText || "")}</td>
       <td class="col-source">${escapeHtml(r.source || "")}</td>
+
       <td class="col-comet">
         ${r.cometUrl
           ? `<a href="${escapeHtml(r.cometUrl)}" target="_blank" rel="noopener">${escapeHtml(r.cometLabel || "Open")}</a>`
+          : ""
+        }
+      </td>
+
+      <td class="col-comet">
+        ${r.teamsList && r.teamsList.length > 2
+          ? `<a href="${escapeHtml(generatorUrl(r))}" target="_blank" rel="noopener">Generator</a>`
           : ""
         }
       </td>
