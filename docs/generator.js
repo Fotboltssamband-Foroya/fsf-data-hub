@@ -134,7 +134,7 @@ function generate() {
         heimalið: m.home,
         úrslit: "-",
         útilið: m.away,
-        vøllur: `Vøllur ${matchIndex + 1}`
+        vøllur: `${matchIndex + 1}`
       });
     });
   });
