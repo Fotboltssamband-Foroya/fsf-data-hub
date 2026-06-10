@@ -13,6 +13,21 @@ function getParams() {
   document.getElementById("teamsInput").value = teams.join("\n");
 }
 
+function clubName(team) {
+  return String(team || "")
+    .trim()
+    .replace(/\s+[a-z]$/i, "")
+    .trim();
+}
+
+function isSameClubMatch(match) {
+  return clubName(match.home) === clubName(match.away);
+}
+
+function roundBadness(matches) {
+  return matches.filter(isSameClubMatch).length;
+}
+
 function roundRobin(teams) {
   let list = [...teams];
 
@@ -46,45 +61,88 @@ function roundRobin(teams) {
   return rounds;
 }
 
+function buildRoundRobinCycles(teams, cycles) {
+  const allRounds = [];
+
+  for (let cycle = 0; cycle < cycles; cycle++) {
+    const baseRounds = roundRobin(teams);
+
+    baseRounds.forEach((matches) => {
+      const roundMatches = matches.map(m => {
+        if (cycle % 2 === 1) {
+          return { home: m.away, away: m.home };
+        }
+
+        return { home: m.home, away: m.away };
+      });
+
+      allRounds.push(roundMatches);
+    });
+  }
+
+  return allRounds;
+}
+
+function chooseBestRounds(rounds, maxRounds, avoidSameClub) {
+  if (!maxRounds || maxRounds >= rounds.length) {
+    return rounds;
+  }
+
+  if (!avoidSameClub) {
+    return rounds.slice(0, maxRounds);
+  }
+
+  const ranked = rounds.map((matches, index) => ({
+    index,
+    matches,
+    badness: roundBadness(matches)
+  }));
+
+  ranked.sort((a, b) => {
+    if (a.badness !== b.badness) return a.badness - b.badness;
+    return a.index - b.index;
+  });
+
+  const chosenIndexes = ranked
+    .slice(0, maxRounds)
+    .map(r => r.index)
+    .sort((a, b) => a - b);
+
+  return chosenIndexes.map(i => rounds[i]);
+}
+
 function generate() {
   const teams = document.getElementById("teamsInput").value
     .split("\n")
     .map(x => x.trim())
     .filter(Boolean);
 
-  const venue = document.getElementById("venue").value.trim();
-  const roundCount = Number(document.getElementById("roundCount").value || 1);
+  const cycles = Number(document.getElementById("roundRobinType").value || 1);
+  const maxRoundsInput = document.getElementById("maxRounds").value;
+  const maxRounds = maxRoundsInput ? Number(maxRoundsInput) : null;
+  const avoidSameClub = document.getElementById("preferAvoidSameClub").checked;
+
+  const allRounds = buildRoundRobinCycles(teams, cycles);
+  const selectedRounds = chooseBestRounds(allRounds, maxRounds, avoidSameClub);
 
   SCHEDULE = [];
 
-  for (let cycle = 0; cycle < roundCount; cycle++) {
-    const rounds = roundRobin(teams);
-
-    rounds.forEach((matches, index) => {
-  matches.forEach((m, matchIndex) => {
-    let home = m.home;
-    let away = m.away;
-
-    if (cycle % 2 === 1) {
-      home = m.away;
-      away = m.home;
-    }
-
-    SCHEDULE.push({
-      umfar: index + 1 + (cycle * rounds.length),
-      heimalið: home,
-      úrslit: "-",
-      útilið: away,
-      vøllur: `${matchIndex + 1}`
+  selectedRounds.forEach((matches, roundIndex) => {
+    matches.forEach((m, matchIndex) => {
+      SCHEDULE.push({
+        umfar: roundIndex + 1,
+        heimalið: m.home,
+        úrslit: "-",
+        útilið: m.away,
+        vøllur: `Vøllur ${matchIndex + 1}`
+      });
     });
   });
-});
-  }
 
-  render();
+  render(selectedRounds, allRounds.length);
 }
 
-function render() {
+function render(selectedRounds, totalRounds) {
   const tbody = document.querySelector("#tbl tbody");
 
   tbody.innerHTML = SCHEDULE.map(r => `
@@ -97,8 +155,10 @@ function render() {
     </tr>
   `).join("");
 
+  const keptRounds = selectedRounds ? selectedRounds.length : 0;
+
   document.getElementById("note").textContent =
-    `${SCHEDULE.length} matches generated`;
+    `${SCHEDULE.length} matches generated — ${keptRounds} rounds kept from ${totalRounds}`;
 }
 
 function exportExcel() {
