@@ -29,8 +29,13 @@
       <input id="maxRounds" type="number" min="1" placeholder="Max rounds" style="width:130px">
 
       <label>
+        <input id="concentrateSameClub" type="checkbox" checked>
+        Concentrate same-club games
+      </label>
+
+      <label>
         <input id="preferAvoidSameClub" type="checkbox" checked>
-        Avoid same-club rounds
+        Prefer rounds without same-club games
       </label>
 
       <button onclick="generate()">Generate</button>
