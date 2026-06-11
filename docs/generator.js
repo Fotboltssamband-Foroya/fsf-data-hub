@@ -28,6 +28,17 @@ function roundBadness(matches) {
   return matches.filter(isSameClubMatch).length;
 }
 
+function shuffle(arr) {
+  const a = [...arr];
+
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+
+  return a;
+}
+
 function roundRobin(teams) {
   let list = [...teams];
 
@@ -83,12 +94,43 @@ function buildRoundRobinCycles(teams, cycles) {
   return allRounds;
 }
 
-function chooseBestRounds(rounds, maxRounds, avoidSameClub) {
+function concentrationScore(rounds) {
+  const badnesses = rounds.map(roundBadness).sort((a, b) => b - a);
+
+  let score = 0;
+
+  badnesses.forEach((b, i) => {
+    score += (b * b * 1000) - i;
+  });
+
+  return score;
+}
+
+function optimizeSameClubConcentration(teams, cycles) {
+  const attempts = 1200;
+  let bestRounds = buildRoundRobinCycles(teams, cycles);
+  let bestScore = concentrationScore(bestRounds);
+
+  for (let i = 0; i < attempts; i++) {
+    const shuffledTeams = shuffle(teams);
+    const candidate = buildRoundRobinCycles(shuffledTeams, cycles);
+    const score = concentrationScore(candidate);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestRounds = candidate;
+    }
+  }
+
+  return bestRounds;
+}
+
+function chooseBestRounds(rounds, maxRounds, preferAvoidSameClub) {
   if (!maxRounds || maxRounds >= rounds.length) {
     return rounds;
   }
 
-  if (!avoidSameClub) {
+  if (!preferAvoidSameClub) {
     return rounds.slice(0, maxRounds);
   }
 
@@ -120,10 +162,14 @@ function generate() {
   const cycles = Number(document.getElementById("roundRobinType").value || 1);
   const maxRoundsInput = document.getElementById("maxRounds").value;
   const maxRounds = maxRoundsInput ? Number(maxRoundsInput) : null;
-  const avoidSameClub = document.getElementById("preferAvoidSameClub").checked;
+  const concentrateSameClub = document.getElementById("concentrateSameClub").checked;
+  const preferAvoidSameClub = document.getElementById("preferAvoidSameClub").checked;
 
-  const allRounds = buildRoundRobinCycles(teams, cycles);
-  const selectedRounds = chooseBestRounds(allRounds, maxRounds, avoidSameClub);
+  const allRounds = concentrateSameClub
+    ? optimizeSameClubConcentration(teams, cycles)
+    : buildRoundRobinCycles(teams, cycles);
+
+  const selectedRounds = chooseBestRounds(allRounds, maxRounds, preferAvoidSameClub);
 
   SCHEDULE = [];
 
@@ -134,7 +180,7 @@ function generate() {
         heimalið: m.home,
         úrslit: "-",
         útilið: m.away,
-        vøllur: `${matchIndex + 1}`
+        vøllur: String(matchIndex + 1)
       });
     });
   });
@@ -156,9 +202,16 @@ function render(selectedRounds, totalRounds) {
   `).join("");
 
   const keptRounds = selectedRounds ? selectedRounds.length : 0;
+  const sameClubRounds = selectedRounds
+    ? selectedRounds.map(roundBadness).filter(x => x > 0).length
+    : 0;
+
+  const sameClubMatches = selectedRounds
+    ? selectedRounds.reduce((sum, r) => sum + roundBadness(r), 0)
+    : 0;
 
   document.getElementById("note").textContent =
-    `${SCHEDULE.length} matches generated — ${keptRounds} rounds kept from ${totalRounds}`;
+    `${SCHEDULE.length} matches generated — ${keptRounds} rounds kept from ${totalRounds}. Same-club matches: ${sameClubMatches} in ${sameClubRounds} rounds.`;
 }
 
 function exportExcel() {
