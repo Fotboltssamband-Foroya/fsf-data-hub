@@ -245,11 +245,12 @@ function render(selectedRounds, totalRounds) {
 
   tbody.innerHTML = SCHEDULE.map(r => `
     <tr>
-      <td>${escapeHtml(r.umfar)}</td>
-      <td>${escapeHtml(r.heimalið)}</td>
-      <td>${escapeHtml(r.úrslit)}</td>
-      <td>${escapeHtml(r.útilið)}</td>
-      <td>${escapeHtml(r.vøllur)}</td>
+<td>${escapeHtml(r.umfar)}</td>
+<td>${escapeHtml(r.tíð)}</td>
+<td>${escapeHtml(r.heimalið)}</td>
+<td>${escapeHtml(r.úrslit)}</td>
+<td>${escapeHtml(r.útilið)}</td>
+<td>${escapeHtml(r.vøllur)}</td>
     </tr>
   `).join("");
 
