@@ -305,6 +305,11 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 function exportPDF() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("PDF library is not loaded yet. Try refreshing the page.");
+    return;
+  }
+
   const { jsPDF } = window.jspdf;
 
   const doc = new jsPDF({
@@ -317,13 +322,14 @@ function exportPDF() {
   const venue = document.getElementById("venue").value || "";
   const generated = new Date().toLocaleString("fo-FO");
 
-  doc.setFontSize(18);
-  doc.text("FSF Kappingargeneratorur", 14, 15);
+  doc.setFontSize(16);
+  doc.setTextColor(0, 59, 122);
+  doc.text(competition, 10, 12);
 
-  doc.setFontSize(12);
-  doc.text(competition, 14, 24);
-  doc.text(`Vøllur: ${venue}`, 14, 31);
-  doc.text(`Framleitt: ${generated}`, 14, 38);
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Vøllur: ${venue}`, 10, 26);
+  doc.text(`Útskrivað: ${generated}`, 10, 32);
 
   const rows = SCHEDULE.map(r => [
     r.umfar,
@@ -337,20 +343,55 @@ function exportPDF() {
   doc.autoTable({
     head: [["Umfar", "Tíð", "Heimalið", "Úrslit", "Útilið", "Vøllur"]],
     body: rows,
-    startY: 46,
+    startY: 38,
+    margin: { left: 10, right: 10 },
     theme: "grid",
+    tableWidth: "auto",
+
+    styles: {
+      fontSize: 7.5,
+      cellPadding: 1.1,
+      overflow: "linebreak",
+      valign: "middle",
+      lineWidth: 0.15
+    },
+
     headStyles: {
       fillColor: [0, 59, 122],
       textColor: [255, 255, 255],
-      fontStyle: "bold"
+      fontStyle: "bold",
+      halign: "center"
     },
-    styles: {
-      fontSize: 9,
-      cellPadding: 2
+
+    columnStyles: {
+      0: { cellWidth: 14, halign: "center" },
+      1: { cellWidth: 18, halign: "center" },
+      2: { cellWidth: 70 },
+      3: { cellWidth: 14, halign: "center" },
+      4: { cellWidth: 70 },
+      5: { cellWidth: 14, halign: "center" }
+    },
+
+    didParseCell: function (data) {
+      if (data.section === "body") {
+        const round = Number(data.row.raw[0]);
+
+        if (round % 2 === 0) {
+          data.cell.styles.fillColor = [238, 242, 247];
+        }
+
+        if ([0, 1, 3, 5].includes(data.column.index)) {
+          data.cell.styles.halign = "center";
+        }
+      }
     }
   });
 
-  doc.save(`${competition}.pdf`);
+  const safeName = competition
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    .replace(/\s+/g, "_");
+
+  doc.save(`${safeName || "kapping"}.pdf`);
 }
 getParams();
 generate();
