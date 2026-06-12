@@ -345,15 +345,40 @@ async function exportPDF() {
   doc.text(`Vøllur: ${venue}`, 10, 20);
   doc.text(`Útskrivað: ${generated}`, 10, 24);
 
-  // QR code top-right
-  try {
-    const qrDiv = document.createElement("div");
+// QR code top-right
+try {
+  const scheduleUrl =
+    window.location.origin +
+    window.location.pathname.replace(
+      "generator.html",
+      "schedule.html"
+    ) +
+    "?data=" +
+    encodeURIComponent(
+      JSON.stringify({
+        competition: document.getElementById("competitionName").value,
+        venue: document.getElementById("venue").value,
+        matches: SCHEDULE
+      })
+    );
 
-    new QRCode(qrDiv, {
-      text: window.location.href,
-      width: 120,
-      height: 120
-    });
+  const qrDiv = document.createElement("div");
+
+  new QRCode(qrDiv, {
+    text: scheduleUrl,
+    width: 120,
+    height: 120
+  });
+
+  const qrCanvas = qrDiv.querySelector("canvas");
+
+  if (qrCanvas) {
+    const qrImg = qrCanvas.toDataURL("image/png");
+    doc.addImage(qrImg, "PNG", 172, 8, 28, 28);
+  }
+} catch (e) {
+  console.warn("Could not add QR code", e);
+}
 
     const qrCanvas = qrDiv.querySelector("canvas");
 
