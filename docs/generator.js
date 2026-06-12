@@ -304,6 +304,53 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
 
+  const doc = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4"
+  });
+
+  const competition = document.getElementById("competitionName").value || "Kapping";
+  const venue = document.getElementById("venue").value || "";
+  const generated = new Date().toLocaleString("fo-FO");
+
+  doc.setFontSize(18);
+  doc.text("FSF Kappingargeneratorur", 14, 15);
+
+  doc.setFontSize(12);
+  doc.text(competition, 14, 24);
+  doc.text(`Vøllur: ${venue}`, 14, 31);
+  doc.text(`Framleitt: ${generated}`, 14, 38);
+
+  const rows = SCHEDULE.map(r => [
+    r.umfar,
+    r.tíð || "",
+    r.heimalið,
+    r.úrslit,
+    r.útilið,
+    r.vøllur
+  ]);
+
+  doc.autoTable({
+    head: [["Umfar", "Tíð", "Heimalið", "Úrslit", "Útilið", "Vøllur"]],
+    body: rows,
+    startY: 46,
+    theme: "grid",
+    headStyles: {
+      fillColor: [0, 59, 122],
+      textColor: [255, 255, 255],
+      fontStyle: "bold"
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 2
+    }
+  });
+
+  doc.save(`${competition}.pdf`);
+}
 getParams();
 generate();
