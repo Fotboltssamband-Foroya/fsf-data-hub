@@ -1,78 +1,34 @@
-<!doctype html>
-<html lang="fo">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+const params = new URLSearchParams(window.location.search);
 
-<title>FSF Kappingarskrá</title>
+const raw = params.get("data");
 
-<link rel="stylesheet" href="style.css">
-
-<style>
-body{
-  padding:20px;
+if (!raw) {
+  document.body.innerHTML = "<h2>Ongin skrá funnin</h2>";
+  throw new Error("No data");
 }
 
-.scheduleHeader{
-  margin-bottom:20px;
-}
+const decoded = JSON.parse(
+  decodeURIComponent(raw)
+);
 
-.scheduleHeader h1{
-  margin:0;
-}
+document.getElementById("competition").textContent =
+  decoded.competition || "";
 
-.scheduleInfo{
-  color:#93a4c7;
-  margin-top:10px;
-}
+document.getElementById("venue").textContent =
+  decoded.venue
+    ? `Vøllur: ${decoded.venue}`
+    : "";
 
-table{
-  width:100%;
-  border-collapse:collapse;
-}
+const tbody =
+  document.getElementById("tbody");
 
-th,td{
-  padding:8px;
-  border:1px solid rgba(255,255,255,.15);
-}
-
-th{
-  background:#003b7a;
-  color:white;
-}
-
-.roundEven{
-  background:rgba(255,255,255,.05);
-}
-</style>
-
-</head>
-<body>
-
-<div class="scheduleHeader">
-  <h1 id="competition"></h1>
-
-  <div class="scheduleInfo">
-    <div id="venue"></div>
-  </div>
-</div>
-
-<table>
-<thead>
-<tr>
-<th>Umfar</th>
-<th>Tíð</th>
-<th>Heimalið</th>
-<th>Útilið</th>
-<th>Vøllur</th>
-</tr>
-</thead>
-
-<tbody id="tbody"></tbody>
-
-</table>
-
-<script src="schedule.js"></script>
-
-</body>
-</html>
+tbody.innerHTML =
+  decoded.matches.map(m => `
+    <tr class="${m.umfar % 2 === 0 ? "roundEven" : ""}">
+      <td>${m.umfar}</td>
+      <td>${m.tið || ""}</td>
+      <td>${m.heimalið}</td>
+      <td>${m.útilið}</td>
+      <td>${m.vøllur}</td>
+    </tr>
+  `).join("");
