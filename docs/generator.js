@@ -313,7 +313,7 @@ function exportPDF() {
   const { jsPDF } = window.jspdf;
 
   const doc = new jsPDF({
-    orientation: "landscape",
+    orientation: "portrait",
     unit: "mm",
     format: "a4"
   });
@@ -328,8 +328,8 @@ function exportPDF() {
 
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text(`Vøllur: ${venue}`, 10, 26);
-  doc.text(`Útskrivað: ${generated}`, 10, 32);
+  doc.text(`Vøllur: ${venue}`, 10, 20);
+  doc.text(`Útskrivað: ${generated}`, 10, 24);
 
   const rows = SCHEDULE.map(r => [
     r.umfar,
@@ -340,52 +340,52 @@ function exportPDF() {
     r.vøllur
   ]);
 
-  doc.autoTable({
-    head: [["Umfar", "Tíð", "Heimalið", "Úrslit", "Útilið", "Vøllur"]],
-    body: rows,
-    startY: 38,
-    margin: { left: 10, right: 10 },
-    theme: "grid",
-    tableWidth: "auto",
+doc.autoTable({
+  head: [["Umfar", "Tíð", "Heimalið", "Úrslit", "Útilið", "Vøllur"]],
+  body: rows,
+  startY: 30,
+  margin: { left: 10, right: 10 },
+  theme: "grid",
+  tableWidth: 190,
 
-    styles: {
-      fontSize: 7.5,
-      cellPadding: 1.1,
-      overflow: "linebreak",
-      valign: "middle",
-      lineWidth: 0.15
-    },
+  styles: {
+    fontSize: 7.2,
+    cellPadding: 1,
+    overflow: "linebreak",
+    valign: "middle",
+    lineWidth: 0.12
+  },
 
-    headStyles: {
-      fillColor: [0, 59, 122],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      halign: "center"
-    },
+  headStyles: {
+    fillColor: [0, 59, 122],
+    textColor: [255, 255, 255],
+    fontStyle: "bold",
+    halign: "center"
+  },
 
-    columnStyles: {
-      0: { cellWidth: 14, halign: "center" },
-      1: { cellWidth: 18, halign: "center" },
-      2: { cellWidth: 70 },
-      3: { cellWidth: 14, halign: "center" },
-      4: { cellWidth: 70 },
-      5: { cellWidth: 14, halign: "center" }
-    },
+  columnStyles: {
+    0: { cellWidth: 13, halign: "center" },
+    1: { cellWidth: 16, halign: "center" },
+    2: { cellWidth: 52 },
+    3: { cellWidth: 13, halign: "center" },
+    4: { cellWidth: 52 },
+    5: { cellWidth: 13, halign: "center" }
+  },
 
-    didParseCell: function (data) {
-      if (data.section === "body") {
-        const round = Number(data.row.raw[0]);
+  didParseCell: function (data) {
+    if (data.section === "body") {
+      const round = Number(data.row.raw[0]);
 
-        if (round % 2 === 0) {
-          data.cell.styles.fillColor = [238, 242, 247];
-        }
+      if (round % 2 === 0) {
+        data.cell.styles.fillColor = [238, 242, 247];
+      }
 
-        if ([0, 1, 3, 5].includes(data.column.index)) {
-          data.cell.styles.halign = "center";
-        }
+      if ([0, 1, 3, 5].includes(data.column.index)) {
+        data.cell.styles.halign = "center";
       }
     }
-  });
+  }
+});
 
   const safeName = competition
     .replace(/[^\p{L}\p{N}\s_-]/gu, "")
