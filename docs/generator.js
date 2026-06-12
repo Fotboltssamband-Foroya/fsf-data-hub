@@ -310,40 +310,6 @@ function exportPDF() {
     return;
   }
 
-const qrDiv = document.createElement("div");
-
-new QRCode(qrDiv, {
-  text: window.location.href,
-  width: 120,
-  height: 120
-});
-
-const qrCanvas = qrDiv.querySelector("canvas");
-
-if (qrCanvas) {
-  const qrImg = qrCanvas.toDataURL("image/png");
-
-  doc.addImage(
-    qrImg,
-    "PNG",
-    165,   // x
-    8,     // y
-    30,    // width
-    30     // height
-  );
-}
-
-  const logo = await loadImage("fsf-logo.png");
-
-doc.addImage(
-  logo,
-  "PNG",
-  10,
-  270,
-  25,
-  12
-);
-  
   const { jsPDF } = window.jspdf;
 
   const doc = new jsPDF({
@@ -374,52 +340,52 @@ doc.addImage(
     r.vøllur
   ]);
 
-doc.autoTable({
-  head: [["Umfar", "Tíð", "Heimalið", "Úrslit", "Útilið", "Vøllur"]],
-  body: rows,
-  startY: 30,
-  margin: { left: 10, right: 10 },
-  theme: "grid",
-  tableWidth: 190,
+  doc.autoTable({
+    head: [["Umfar", "Tíð", "Heimalið", "Úrslit", "Útilið", "Vøllur"]],
+    body: rows,
+    startY: 30,
+    margin: { left: 10, right: 10 },
+    theme: "grid",
+    tableWidth: 190,
 
-  styles: {
-    fontSize: 7.2,
-    cellPadding: 1,
-    overflow: "linebreak",
-    valign: "middle",
-    lineWidth: 0.12
-  },
+    styles: {
+      fontSize: 7.2,
+      cellPadding: 1,
+      overflow: "linebreak",
+      valign: "middle",
+      lineWidth: 0.12
+    },
 
-  headStyles: {
-    fillColor: [0, 59, 122],
-    textColor: [255, 255, 255],
-    fontStyle: "bold",
-    halign: "center"
-  },
+    headStyles: {
+      fillColor: [0, 59, 122],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      halign: "center"
+    },
 
-  columnStyles: {
-    0: { cellWidth: 13, halign: "center" },
-    1: { cellWidth: 16, halign: "center" },
-    2: { cellWidth: 52 },
-    3: { cellWidth: 13, halign: "center" },
-    4: { cellWidth: 52 },
-    5: { cellWidth: 13, halign: "center" }
-  },
+    columnStyles: {
+      0: { cellWidth: 13, halign: "center" },
+      1: { cellWidth: 16, halign: "center" },
+      2: { cellWidth: 52 },
+      3: { cellWidth: 13, halign: "center" },
+      4: { cellWidth: 52 },
+      5: { cellWidth: 13, halign: "center" }
+    },
 
-  didParseCell: function (data) {
-    if (data.section === "body") {
-      const round = Number(data.row.raw[0]);
+    didParseCell: function (data) {
+      if (data.section === "body") {
+        const round = Number(data.row.raw[0]);
 
-      if (round % 2 === 0) {
-        data.cell.styles.fillColor = [238, 242, 247];
-      }
+        if (round % 2 === 0) {
+          data.cell.styles.fillColor = [238, 242, 247];
+        }
 
-      if ([0, 1, 3, 5].includes(data.column.index)) {
-        data.cell.styles.halign = "center";
+        if ([0, 1, 3, 5].includes(data.column.index)) {
+          data.cell.styles.halign = "center";
+        }
       }
     }
-  }
-});
+  });
 
   const safeName = competition
     .replace(/[^\p{L}\p{N}\s_-]/gu, "")
