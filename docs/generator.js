@@ -186,17 +186,56 @@ function generate() {
 
   SCHEDULE = [];
 
-  selectedRounds.forEach((matches, roundIndex) => {
-    matches.forEach((m, matchIndex) => {
-      SCHEDULE.push({
-        umfar: roundIndex + 1,
-        heimalið: m.home,
-        úrslit: "-",
-        útilið: m.away,
-        vøllur: String(matchIndex + 1)
-      });
+  const pitchCount =
+  Number(document.getElementById("pitchCount").value || 4);
+
+const startTime =
+  document.getElementById("startTime").value || "10:00";
+
+const matchMinutes =
+  Number(document.getElementById("matchMinutes").value || 12);
+
+const breakMinutes =
+  Number(document.getElementById("breakMinutes").value || 3);
+
+const [startHour, startMinute] =
+  startTime.split(":").map(Number);
+
+selectedRounds.forEach((matches, roundIndex) => {
+
+  const roundStart =
+    new Date(
+      2000,
+      0,
+      1,
+      startHour,
+      startMinute +
+      roundIndex * (matchMinutes + breakMinutes)
+    );
+
+  const roundTime =
+    roundStart.toLocaleTimeString(
+      "en-GB",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+
+  matches.forEach((m, matchIndex) => {
+
+    SCHEDULE.push({
+      umfar: roundIndex + 1,
+      tíð: roundTime,
+      heimalið: m.home,
+      úrslit: "-",
+      útilið: m.away,
+      vøllur: String((matchIndex % pitchCount) + 1)
     });
+
   });
+
+});
 
   render(selectedRounds, allRounds.length);
 }
