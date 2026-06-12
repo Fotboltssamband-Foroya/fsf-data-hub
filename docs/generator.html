@@ -56,7 +56,25 @@
       Um talið er lægri enn fulla kappingin, verða nøkur umfør tikin burtur.
     </small>
   </div>
+     
+<div class="setting">
+  <label for="startTime"><strong>Byrjanartíð</strong></label>
+  <input id="startTime" type="time" value="10:00">
+  <small>Tíðin tá fyrsta umfarið byrjar.</small>
+</div>
 
+<div class="setting">
+  <label for="matchMinutes"><strong>Dystarlongd</strong></label>
+  <input id="matchMinutes" type="number" min="1" value="12" style="width:100px">
+  <small>Longdin á hvørjum dysti í minuttum.</small>
+</div>
+
+<div class="setting">
+  <label for="breakMinutes"><strong>Steðgur</strong></label>
+  <input id="breakMinutes" type="number" min="0" value="3" style="width:100px">
+  <small>Steðgur millum umfør í minuttum.</small>
+</div>
+     
   <div class="setting checkboxSetting">
     <label>
       <input id="concentrateSameClub" type="checkbox" checked>
