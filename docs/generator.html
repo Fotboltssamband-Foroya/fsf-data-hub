@@ -17,40 +17,80 @@
     </header>
 <h2 id="competitionTitle"></h2>
 <p id="competitionVenue"></p>
-    <div class="controls">
-      <input id="competitionName" type="text" placeholder="Competition name">
-      <input id="venue" type="text" placeholder="Vøllur">
+   <div class="controls">
 
-      <select id="roundRobinType">
-        <option value="1">Single Round Robin</option>
-        <option value="2">Double Round Robin</option>
-        <option value="3">Triple Round Robin</option>
-      </select>
+  <div class="setting">
+    <label for="competitionName"><strong>Kappingarheiti</strong></label>
+    <input id="competitionName" type="text" placeholder="T.d. U9 gentur innl. A1">
+  </div>
 
-      <input id="maxRounds" type="number" min="1" placeholder="Max rounds" style="width:130px">
+  <div class="setting">
+    <label for="venue"><strong>Vøllur</strong></label>
+    <input id="venue" type="text" placeholder="T.d. við Løkin">
+  </div>
 
-<input id="pitchCount" type="number" min="1" value="4" placeholder="Pitches" style="width:100px">
+  <div class="setting">
+    <label for="roundRobinType"><strong>Kappingarslag</strong></label>
+    <select id="roundRobinType">
+      <option value="1">Einfalt øll móti øllum</option>
+      <option value="2">Tvøfalt øll móti øllum</option>
+      <option value="3">Trífalt øll móti øllum</option>
+    </select>
 
-<input id="startTime" type="time" value="10:00">
+    <small>
+      Hvørt lið spælir ávikavist eina, tvær ella tríggjar ferðir móti hvørjum mótstøðuliði.
+    </small>
+  </div>
 
-<input id="matchMinutes" type="number" min="1" value="12" placeholder="Minutes" style="width:100px">
+  <div class="setting">
+    <label for="maxRounds"><strong>Mesta tal av umførum</strong></label>
+    <input
+      id="maxRounds"
+      type="number"
+      min="1"
+      placeholder="Øll umfør"
+      style="width:140px"
+    >
 
-<input id="breakMinutes" type="number" min="0" value="3" placeholder="Break" style="width:100px">
+    <small>
+      Um talið er lægri enn fulla kappingin, verða nøkur umfør tikin burtur.
+    </small>
+  </div>
 
-      <label>
-        <input id="concentrateSameClub" type="checkbox" checked>
-        Concentrate same-club games
-      </label>
+  <div class="setting checkboxSetting">
+    <label>
+      <input id="concentrateSameClub" type="checkbox" checked>
+      <strong>Savna innanhýsis dystir</strong>
+    </label>
 
-      <label>
-        <input id="preferAvoidSameClub" type="checkbox" checked>
-        Prefer rounds without same-club games
-      </label>
+    <small>
+      Roynir at leggja dystir millum lið úr sama felagi í somu umfør.
+    </small>
+  </div>
 
-      <button onclick="generate()">Generate</button>
-      <button onclick="exportExcel()">Export Excel</button>
-      <button onclick="window.print()">Export PDF</button>
-    </div>
+  <div class="setting checkboxSetting">
+    <label>
+      <input id="preferAvoidSameClub" type="checkbox" checked>
+      <strong>Vel bestu umførini</strong>
+    </label>
+
+    <small>
+      Um umfør verða tikin burtur, verða fyrst varðveitt tey umfør,
+      sum hava fæst innanhýsis dystir.
+    </small>
+  </div>
+
+  <button onclick="generate()">Ger kapping</button>
+
+  <button onclick="exportExcel()">
+    Tak niður Excel
+  </button>
+
+  <button onclick="window.print()">
+    Tak niður PDF
+  </button>
+
+</div>
 
     <p class="sub">Teams, one per line:</p>
     <textarea id="teamsInput" style="width:100%;min-height:180px;border-radius:14px;padding:12px;"></textarea>
