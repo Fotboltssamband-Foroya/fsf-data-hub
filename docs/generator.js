@@ -16,14 +16,27 @@ let SCHEDULE = [];
 function getParams() {
   const p = new URLSearchParams(window.location.search);
 
-  const teams = (p.get("teams") || "")
+  const teamsFromUrl = (p.get("teams") || "")
     .split("|")
     .map(x => x.trim())
     .filter(Boolean);
 
-  document.getElementById("competitionName").value = p.get("competition") || "";
-  document.getElementById("venue").value = p.get("venue") || "";
-  document.getElementById("teamsInput").value = teams.join("\n");
+  const competitionFromUrl = p.get("competition") || "";
+  const venueFromUrl = p.get("venue") || "";
+
+  if (competitionFromUrl) {
+    document.getElementById("competitionName").value = competitionFromUrl;
+    document.getElementById("competitionTitle").textContent = competitionFromUrl;
+  }
+
+  if (venueFromUrl) {
+    document.getElementById("venue").value = venueFromUrl;
+    document.getElementById("competitionVenue").textContent = venueFromUrl;
+  }
+
+  if (teamsFromUrl.length > 0) {
+    document.getElementById("teamsInput").value = teamsFromUrl.join("\n");
+  }
 }
 
 function clubName(team) {
@@ -394,4 +407,7 @@ function exportPDF() {
   doc.save(`${safeName || "kapping"}.pdf`);
 }
 getParams();
-generate();
+
+if (document.getElementById("teamsInput").value.trim()) {
+  generate();
+}
