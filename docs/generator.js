@@ -186,8 +186,6 @@ function generate() {
 
   SCHEDULE = [];
 
-  const pitchCount =
-  Number(document.getElementById("pitchCount").value || 4);
 
 const startTime =
   document.getElementById("startTime").value || "10:00";
@@ -230,7 +228,7 @@ selectedRounds.forEach((matches, roundIndex) => {
       heimalið: m.home,
       úrslit: "-",
       útilið: m.away,
-      vøllur: String((matchIndex % pitchCount) + 1)
+      vøllur: String(matchIndex + 1)
     });
 
   });
