@@ -359,3 +359,23 @@ tbody tr:hover td{
     background:white !important;
   }
 }
+.setting{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.setting label{
+  font-size:14px;
+}
+
+.setting small{
+  color:var(--muted);
+  font-size:12px;
+  max-width:350px;
+  line-height:1.35;
+}
+
+.checkboxSetting{
+  padding:8px 0;
+}
