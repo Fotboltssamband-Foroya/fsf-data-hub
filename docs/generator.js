@@ -317,7 +317,7 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-function exportPDF() {
+async function exportPDF() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     alert("PDF library is not loaded yet. Try refreshing the page.");
     return;
@@ -335,6 +335,7 @@ function exportPDF() {
   const venue = document.getElementById("venue").value || "";
   const generated = new Date().toLocaleString("fo-FO");
 
+  // Header text
   doc.setFontSize(16);
   doc.setTextColor(0, 59, 122);
   doc.text(competition, 10, 12);
@@ -343,6 +344,26 @@ function exportPDF() {
   doc.setTextColor(0, 0, 0);
   doc.text(`Vøllur: ${venue}`, 10, 20);
   doc.text(`Útskrivað: ${generated}`, 10, 24);
+
+  // QR code top-right
+  try {
+    const qrDiv = document.createElement("div");
+
+    new QRCode(qrDiv, {
+      text: window.location.href,
+      width: 120,
+      height: 120
+    });
+
+    const qrCanvas = qrDiv.querySelector("canvas");
+
+    if (qrCanvas) {
+      const qrImg = qrCanvas.toDataURL("image/png");
+      doc.addImage(qrImg, "PNG", 172, 8, 28, 28);
+    }
+  } catch (e) {
+    console.warn("Could not add QR code", e);
+  }
 
   const rows = SCHEDULE.map(r => [
     r.umfar,
@@ -356,7 +377,7 @@ function exportPDF() {
   doc.autoTable({
     head: [["Umfar", "Tíð", "Heimalið", "Úrslit", "Útilið", "Vøllur"]],
     body: rows,
-    startY: 30,
+    startY: 38,
     margin: { left: 10, right: 10 },
     theme: "grid",
     tableWidth: 190,
@@ -400,12 +421,47 @@ function exportPDF() {
     }
   });
 
+  // FSF logo bottom-left
+  try {
+    const logo = await loadImageAsDataUrl("fsf-logo.png");
+    doc.addImage(logo, "PNG", 10, 280, 24, 10);
+  } catch (e) {
+    console.warn("Could not add FSF logo", e);
+  }
+
+  // Footer text
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text("Framleitt við FSF Kappingargeneratori", 38, 287);
+
   const safeName = competition
     .replace(/[^\p{L}\p{N}\s_-]/gu, "")
     .replace(/\s+/g, "_");
 
   doc.save(`${safeName || "kapping"}.pdf`);
 }
+
+function loadImageAsDataUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = function () {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      resolve(canvas.toDataURL("image/png"));
+    };
+
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 getParams();
 
 if (document.getElementById("teamsInput").value.trim()) {
