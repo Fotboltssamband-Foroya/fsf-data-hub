@@ -310,6 +310,40 @@ function exportPDF() {
     return;
   }
 
+const qrDiv = document.createElement("div");
+
+new QRCode(qrDiv, {
+  text: window.location.href,
+  width: 120,
+  height: 120
+});
+
+const qrCanvas = qrDiv.querySelector("canvas");
+
+if (qrCanvas) {
+  const qrImg = qrCanvas.toDataURL("image/png");
+
+  doc.addImage(
+    qrImg,
+    "PNG",
+    165,   // x
+    8,     // y
+    30,    // width
+    30     // height
+  );
+}
+
+  const logo = await loadImage("fsf-logo.png");
+
+doc.addImage(
+  logo,
+  "PNG",
+  10,
+  270,
+  25,
+  12
+);
+  
   const { jsPDF } = window.jspdf;
 
   const doc = new jsPDF({
