@@ -270,10 +270,11 @@ function render(selectedRounds, totalRounds) {
 function exportExcel() {
   const ws = XLSX.utils.json_to_sheet(SCHEDULE.map(r => ({
     "Umfar": r.umfar,
-    "Heimalið": r.heimalið,
-    "Úrslit": r.úrslit,
-    "Útilið": r.útilið,
-    "Vøllur": r.vøllur
+"Tíð": r.tíð,
+"Heimalið": r.heimalið,
+"Úrslit": r.úrslit,
+"Útilið": r.útilið,
+"Vøllur": r.vøllur
   })));
 
   const wb = XLSX.utils.book_new();
