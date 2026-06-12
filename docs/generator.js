@@ -26,12 +26,10 @@ function getParams() {
 
   if (competitionFromUrl) {
     document.getElementById("competitionName").value = competitionFromUrl;
-    document.getElementById("competitionTitle").textContent = competitionFromUrl;
   }
 
   if (venueFromUrl) {
     document.getElementById("venue").value = venueFromUrl;
-    document.getElementById("competitionVenue").textContent = venueFromUrl;
   }
 
   if (teamsFromUrl.length > 0) {
