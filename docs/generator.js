@@ -261,8 +261,22 @@ function render(selectedRounds, totalRounds) {
     ? selectedRounds.reduce((sum, r) => sum + roundBadness(r), 0)
     : 0;
 
-  document.getElementById("note").textContent =
-    `${SCHEDULE.length} matches generated — ${keptRounds} rounds kept from ${totalRounds}. Same-club matches: ${sameClubMatches} in ${sameClubRounds} rounds.`;
+ document.getElementById("pdfCompetition").textContent =
+  document.getElementById("competitionName").value;
+
+document.getElementById("pdfVenue").textContent =
+  "Vøllur: " + document.getElementById("venue").value;
+
+document.getElementById("pdfTeams").textContent =
+  "Lið: " +
+  document.getElementById("teamsInput")
+    .value
+    .split("\n")
+    .filter(Boolean)
+    .length;
+
+document.getElementById("pdfRounds").textContent =
+  "Umfør: " + keptRounds;
 }
 
 function exportExcel() {
