@@ -6,6 +6,8 @@
   <title>FSF – Tournament Generator</title>
   <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -104,9 +106,7 @@
     Tak niður Excel
   </button>
 
-  <button onclick="window.print()">
-    Tak niður PDF
-  </button>
+  <button onclick="exportPDF()">Tak niður PDF</button>
 
 
      <div id="pdfHeader">
