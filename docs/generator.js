@@ -1,3 +1,16 @@
+const params = new URLSearchParams(window.location.search);
+
+const competition =
+  params.get("competition") || "";
+
+const venue =
+  params.get("venue") || "";
+
+const teams =
+  (params.get("teams") || "")
+    .split("|")
+    .filter(Boolean);
+
 let SCHEDULE = [];
 
 function getParams() {
