@@ -450,14 +450,12 @@ async function exportPDF() {
 
   try {
     const logo = await loadImageAsDataUrl("fsf-logo.png");
-    doc.addImage(logo, "PNG", 10, 280, 24, 10);
+    doc.addImage(logo, "PNG", 10, 280, 24, 30);
   } catch (e) {
     console.warn("Could not add FSF logo", e);
   }
 
-  doc.setFontSize(8);
-  doc.setTextColor(120, 120, 120);
-  doc.text("Framleitt við FSF Kappingargeneratori", 38, 287);
+  
 
   const safeName = competition
     .replace(/[^\p{L}\p{N}\s_-]/gu, "")
