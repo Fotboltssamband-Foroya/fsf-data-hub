@@ -447,13 +447,25 @@ async function exportPDF() {
       }
     }
   });
+  
+const finalY = doc.lastAutoTable.finalY;
 
-  try {
-    const logo = await loadImageAsDataUrl("fsf-logo.png");
-    doc.addImage(logo, "PNG", 10, 200, 24, 30);
-  } catch (e) {
-    console.warn("Could not add FSF logo", e);
-  }
+try {
+  const logo = await loadImageAsDataUrl("fsf-logo.png");
+
+  doc.addImage(
+    logo,
+    "PNG",
+    10,             // x
+    finalY + 10,    // y
+    24,             // width
+    30              // height
+  );
+
+} catch (e) {
+  console.warn("Could not add FSF logo", e);
+}
+
 
   
 
