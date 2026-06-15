@@ -458,8 +458,8 @@ try {
     "PNG",
     10,             // x
     finalY + 10,    // y
-    24,             // width
-    30              // height
+    30,             // width
+    35              // height
   );
 
 } catch (e) {
