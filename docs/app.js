@@ -709,11 +709,11 @@ function render() {
       </td>
 
       <td class="col-comet">
-        ${r.teamsList && r.teamsList.length > 2
-          ? `<a href="${escapeHtml(generatorUrl(r))}" target="_blank" rel="noopener">Generator</a>`
-          : ""
-        }
-      </td>
+  ${r.teamsList && r.teamsList.length > 2
+    ? `<a href="${generatorUrl(r)}" target="_blank" rel="noopener">Generator</a>`
+    : ""
+  }
+</td>
     </tr>
   `).join("");
 
