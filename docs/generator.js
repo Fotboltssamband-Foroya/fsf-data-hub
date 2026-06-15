@@ -399,17 +399,23 @@ try {
   doc.text(`Útskrivað: ${generated}`, 10, 24);
 
   try {
-    const scheduleUrl =
-      window.location.origin +
-      window.location.pathname.replace("generator.html", "schedule.html") +
-      "?data=" +
-      encodeURIComponent(
-        JSON.stringify({
-          competition: document.getElementById("competitionName").value,
-          venue: document.getElementById("venue").value,
-          matches: SCHEDULE
-        })
-      );
+    const compactData = {
+  c: document.getElementById("competitionName").value,
+  v: document.getElementById("venue").value,
+  m: SCHEDULE.map(r => [
+    r.umfar,
+    r.tíð || "",
+    r.heimalið,
+    r.útilið,
+    r.vøllur
+  ])
+};
+
+const scheduleUrl =
+  window.location.origin +
+  window.location.pathname.replace("generator.html", "schedule.html") +
+  "?d=" +
+  encodeURIComponent(JSON.stringify(compactData));
 
     const qrDiv = document.createElement("div");
 
