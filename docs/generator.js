@@ -340,6 +340,42 @@ async function exportPDF() {
     return;
   }
 
+try {
+  const scheduleUrl =
+    window.location.origin +
+    window.location.pathname.replace("generator.html", "schedule.html") +
+    "?data=" +
+    encodeURIComponent(
+      JSON.stringify({
+        competition: document.getElementById("competitionName").value,
+        venue: document.getElementById("venue").value,
+        matches: SCHEDULE
+      })
+    );
+
+  const qrDiv = document.createElement("div");
+
+  new QRCode(qrDiv, {
+    text: scheduleUrl,
+    width: 180,
+    height: 180
+  });
+
+  const qrCanvas = qrDiv.querySelector("canvas");
+
+  if (qrCanvas) {
+    const qrImg = qrCanvas.toDataURL("image/png");
+
+    doc.addImage(qrImg, "PNG", 172, 8, 28, 28);
+
+    doc.setFontSize(7);
+    doc.setTextColor(80, 80, 80);
+    doc.text("Skanna fyri skrá", 174, 39);
+  }
+} catch (e) {
+  console.warn("Could not add QR code", e);
+}
+  
   const { jsPDF } = window.jspdf;
 
   const doc = new jsPDF({
