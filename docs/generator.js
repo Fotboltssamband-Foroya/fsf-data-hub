@@ -399,41 +399,40 @@ try {
   doc.text(`Útskrivað: ${generated}`, 10, 24);
 
   try {
-    const compactData = {
-  c: document.getElementById("competitionName").value,
-  v: document.getElementById("venue").value,
-  m: SCHEDULE.map(r => [
-    r.umfar,
-    r.tíð || "",
-    r.heimalið,
-    r.útilið,
-    r.vøllur
-  ])
-};
+  const compactData = {
+    c: document.getElementById("competitionName").value,
+    v: document.getElementById("venue").value,
+    m: SCHEDULE.map(r => [
+      r.umfar,
+      r.tíð || "",
+      r.heimalið,
+      r.útilið,
+      r.vøllur
+    ])
+  };
 
-const scheduleUrl =
-  window.location.origin +
-  window.location.pathname.replace("generator.html", "schedule.html") +
-  "?d=" +
-  encodeURIComponent(JSON.stringify(compactData));
+  const scheduleUrl =
+    window.location.origin +
+    window.location.pathname.replace("generator.html", "schedule.html") +
+    "?d=" +
+    encodeURIComponent(JSON.stringify(compactData));
 
-    const qrDiv = document.createElement("div");
+  const qrImg = await QRCode.toDataURL(scheduleUrl, {
+    width: 160,
+    margin: 1,
+    errorCorrectionLevel: "M"
+  });
 
-    new QRCode(qrDiv, {
-      text: scheduleUrl,
-      width: 120,
-      height: 120
-    });
+  doc.addImage(qrImg, "PNG", 174, 8, 24, 24);
 
-    const qrCanvas = qrDiv.querySelector("canvas");
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text("Skanna fyri skrá", 174, 35);
 
-    if (qrCanvas) {
-      const qrImg = qrCanvas.toDataURL("image/png");
-      doc.addImage(qrImg, "PNG", 172, 8, 28, 28);
-    }
-  } catch (e) {
-    console.warn("Could not add QR code", e);
-  }
+} catch (e) {
+  alert("QR error: " + e.message);
+  console.error("Could not add QR code", e);
+}
 
   const rows = SCHEDULE.map(r => [
     r.umfar,
