@@ -393,3 +393,74 @@ tbody tr:hover td{
     position:static;
   }
 }
+
+/* =========================
+   Mobile schedule page
+   ========================= */
+
+.schedulePage{
+  background:#0b1220;
+  color:#e9eefc;
+}
+
+.mobileSchedule{
+  max-width:720px;
+  margin:0 auto;
+  padding:18px 14px 40px;
+}
+
+.mobileHeader{
+  margin-bottom:18px;
+}
+
+.mobileHeader h1{
+  font-size:22px;
+  margin:0 0 6px;
+}
+
+.mobileHeader p{
+  margin:0;
+  color:#93a4c7;
+}
+
+.roundCard{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  background:rgba(255,255,255,.04);
+  margin-bottom:14px;
+  overflow:hidden;
+}
+
+.roundTitle{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  background:rgba(0,59,122,.65);
+}
+
+.matchCard{
+  display:flex;
+  gap:12px;
+  padding:12px 14px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+
+.pitch{
+  min-width:64px;
+  color:#93a4c7;
+  font-size:13px;
+}
+
+.teams{
+  flex:1;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+  font-weight:600;
+}
+
+.dash{
+  color:#93a4c7;
+}
