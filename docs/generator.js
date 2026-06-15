@@ -387,11 +387,7 @@ async function exportPDF() {
 
   const qrImg = await loadImageAsDataUrl(qrApiUrl);
 
-  doc.addImage(qrImg, "PNG", 174, 8, 24, 24);
 
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text("Skanna fyri skrá", 174, 35);
 
 } catch (e) {
   alert("QR error: " + e.message);
@@ -456,21 +452,35 @@ async function exportPDF() {
   
 const finalY = doc.lastAutoTable.finalY;
 
-try {
-  const logo = await loadImageAsDataUrl("fsf-logo.png");
+// FSF logo
+const logo = await loadImageAsDataUrl("fsf-logo.png");
 
-  doc.addImage(
-    logo,
-    "PNG",
-    10,             // x
-    finalY + 10,    // y
-    30,             // width
-    35              // height
-  );
+doc.addImage(
+  logo,
+  "PNG",
+  10,
+  finalY + 10,
+  30,
+  35
+);
 
-} catch (e) {
-  console.warn("Could not add FSF logo", e);
-}
+// QR code
+doc.addImage(
+  qrImg,
+  "PNG",
+  50,
+  finalY + 10,
+  35,
+  35
+);
+
+doc.setFontSize(7);
+doc.setTextColor(80, 80, 80);
+doc.text(
+  "Skanna fyri skrá",
+  50,
+  finalY + 48
+);
 
 
   
