@@ -340,7 +340,6 @@ async function exportPDF() {
     return;
   }
 
-  
   const { jsPDF } = window.jspdf;
 
   const doc = new jsPDF({
@@ -364,34 +363,33 @@ async function exportPDF() {
 
   let qrImg = null;
 
-try {
-  const compactData = {
-    c: document.getElementById("competitionName").value,
-    v: document.getElementById("venue").value,
-    m: SCHEDULE.map(r => [
-      r.umfar,
-      r.tíð || "",
-      r.heimalið,
-      r.útilið,
-      r.vøllur
-    ])
-  };
+  try {
+    const compactData = {
+      c: competition,
+      v: venue,
+      m: SCHEDULE.map(r => [
+        r.umfar,
+        r.tíð || "",
+        r.heimalið,
+        r.útilið,
+        r.vøllur
+      ])
+    };
 
-  const scheduleUrl =
-    window.location.origin +
-    window.location.pathname.replace("generator.html", "schedule.html") +
-    "?d=" +
-    encodeURIComponent(JSON.stringify(compactData));
+    const scheduleUrl =
+      window.location.origin +
+      window.location.pathname.replace("generator.html", "schedule.html") +
+      "?d=" +
+      encodeURIComponent(JSON.stringify(compactData));
 
-  const qrApiUrl =
-    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
-    encodeURIComponent(scheduleUrl);
+    const qrApiUrl =
+      "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
+      encodeURIComponent(scheduleUrl);
 
-  qrImg = await loadImageAsDataUrl(qrApiUrl);
-
-} catch (e) {
-  console.warn("Could not add QR code", e);
-}
+    qrImg = await loadImageAsDataUrl(qrApiUrl);
+  } catch (e) {
+    console.warn("Could not add QR code", e);
+  }
 
   const rows = SCHEDULE.map(r => [
     r.umfar,
@@ -408,8 +406,7 @@ try {
     startY: 38,
     margin: { left: 10, right: 10 },
     theme: "grid",
-    tableWidth: 190,
-
+    tableWidth: 175,
     styles: {
       fontSize: 7.2,
       cellPadding: 1,
@@ -417,23 +414,20 @@ try {
       valign: "middle",
       lineWidth: 0.12
     },
-
     headStyles: {
       fillColor: [0, 59, 122],
       textColor: [255, 255, 255],
       fontStyle: "bold",
       halign: "center"
     },
-
     columnStyles: {
-      0: { cellWidth: 13, halign: "center" },
-      1: { cellWidth: 16, halign: "center" },
-      2: { cellWidth: 52 },
-      3: { cellWidth: 13, halign: "center" },
-      4: { cellWidth: 52 },
-      5: { cellWidth: 13, halign: "center" }
+      0: { cellWidth: 12, halign: "center" },
+      1: { cellWidth: 15, halign: "center" },
+      2: { cellWidth: 48 },
+      3: { cellWidth: 12, halign: "center" },
+      4: { cellWidth: 48 },
+      5: { cellWidth: 12, halign: "center" }
     },
-
     didParseCell: function (data) {
       if (data.section === "body") {
         const round = Number(data.row.raw[0]);
@@ -448,50 +442,30 @@ try {
       }
     }
   });
-  
-const finalY = doc.lastAutoTable.finalY;
 
-// FSF logo
-const logo = await loadImageAsDataUrl("fsf-logo.png");
+  const finalY = doc.lastAutoTable.finalY;
 
-doc.addImage(
-  logo,
-  "PNG",
-  10,
-  finalY + 10,
-  30,
-  35
-);
+  try {
+    const logo = await loadImageAsDataUrl("fsf-logo.png");
+    doc.addImage(logo, "PNG", 10, finalY + 10, 30, 35);
+  } catch (e) {
+    console.warn("Could not add FSF logo", e);
+  }
 
-// QR code
-if (qrImg) {
-  doc.addImage(
-    qrImg,
-    "PNG",
-    50,
-    finalY + 10,
-    35,
-    35
-  );
+  if (qrImg) {
+    doc.addImage(qrImg, "PNG", 50, finalY + 10, 35, 35);
 
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text(
-    "Skanna fyri skrá",
-    50,
-    finalY + 48
-  );
-}
-
-
-  
+    doc.setFontSize(7);
+    doc.setTextColor(80, 80, 80);
+    doc.text("Skanna fyri skrá", 50, finalY + 48);
+  }
 
   const safeName = competition
     .replace(/[^\p{L}\p{N}\s_-]/gu, "")
     .replace(/\s+/g, "_");
 
   doc.save(`${safeName || "kapping"}.pdf`);
-} 
+}
 
 function loadImageAsDataUrl(url) {
   return new Promise((resolve, reject) => {
