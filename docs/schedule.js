@@ -6,6 +6,7 @@ if (!raw) {
     "<p>Ongin skrá funnin.</p>";
   throw new Error("No schedule data");
 }
+
 const compact = JSON.parse(decodeURIComponent(raw));
 
 const data = {
