@@ -373,7 +373,8 @@ try {
     doc.text("Skanna fyri skrá", 174, 39);
   }
 } catch (e) {
-  console.warn("Could not add QR code", e);
+  alert("QR error: " + e.message);
+  console.error("Could not add QR code", e);
 }
   
   const { jsPDF } = window.jspdf;
