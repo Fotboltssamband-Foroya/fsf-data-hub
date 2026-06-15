@@ -381,11 +381,11 @@ async function exportPDF() {
     "?d=" +
     encodeURIComponent(JSON.stringify(compactData));
 
-  const qrImg = await QRCode.toDataURL(scheduleUrl, {
-    width: 160,
-    margin: 1,
-    errorCorrectionLevel: "M"
-  });
+  const qrApiUrl =
+    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
+    encodeURIComponent(scheduleUrl);
+
+  const qrImg = await loadImageAsDataUrl(qrApiUrl);
 
   doc.addImage(qrImg, "PNG", 174, 8, 24, 24);
 
