@@ -352,7 +352,6 @@ async function exportPDF() {
   const venue = document.getElementById("venue").value || "";
   const generated = new Date().toLocaleString("fo-FO");
 
-  // Header text
   doc.setFontSize(16);
   doc.setTextColor(0, 59, 122);
   doc.text(competition, 10, 12);
@@ -362,40 +361,26 @@ async function exportPDF() {
   doc.text(`Vøllur: ${venue}`, 10, 20);
   doc.text(`Útskrivað: ${generated}`, 10, 24);
 
-// QR code top-right
-try {
-  const scheduleUrl =
-    window.location.origin +
-    window.location.pathname.replace(
-      "generator.html",
-      "schedule.html"
-    ) +
-    "?data=" +
-    encodeURIComponent(
-      JSON.stringify({
-        competition: document.getElementById("competitionName").value,
-        venue: document.getElementById("venue").value,
-        matches: SCHEDULE
-      })
-    );
+  try {
+    const scheduleUrl =
+      window.location.origin +
+      window.location.pathname.replace("generator.html", "schedule.html") +
+      "?data=" +
+      encodeURIComponent(
+        JSON.stringify({
+          competition: document.getElementById("competitionName").value,
+          venue: document.getElementById("venue").value,
+          matches: SCHEDULE
+        })
+      );
 
-  const qrDiv = document.createElement("div");
+    const qrDiv = document.createElement("div");
 
-  new QRCode(qrDiv, {
-    text: scheduleUrl,
-    width: 120,
-    height: 120
-  });
-
-  const qrCanvas = qrDiv.querySelector("canvas");
-
-  if (qrCanvas) {
-    const qrImg = qrCanvas.toDataURL("image/png");
-    doc.addImage(qrImg, "PNG", 172, 8, 28, 28);
-  }
-} catch (e) {
-  console.warn("Could not add QR code", e);
-}
+    new QRCode(qrDiv, {
+      text: scheduleUrl,
+      width: 120,
+      height: 120
+    });
 
     const qrCanvas = qrDiv.querySelector("canvas");
 
@@ -463,7 +448,6 @@ try {
     }
   });
 
-  // FSF logo bottom-left
   try {
     const logo = await loadImageAsDataUrl("fsf-logo.png");
     doc.addImage(logo, "PNG", 10, 280, 24, 10);
@@ -471,7 +455,6 @@ try {
     console.warn("Could not add FSF logo", e);
   }
 
-  // Footer text
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   doc.text("Framleitt við FSF Kappingargeneratori", 38, 287);
@@ -481,7 +464,7 @@ try {
     .replace(/\s+/g, "_");
 
   doc.save(`${safeName || "kapping"}.pdf`);
-}
+} 
 
 function loadImageAsDataUrl(url) {
   return new Promise((resolve, reject) => {
