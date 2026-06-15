@@ -362,7 +362,9 @@ async function exportPDF() {
   doc.text(`Vøllur: ${venue}`, 10, 20);
   doc.text(`Útskrivað: ${generated}`, 10, 24);
 
-  try {
+  let qrImg = null;
+
+try {
   const compactData = {
     c: document.getElementById("competitionName").value,
     v: document.getElementById("venue").value,
@@ -385,13 +387,10 @@ async function exportPDF() {
     "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
     encodeURIComponent(scheduleUrl);
 
-  const qrImg = await loadImageAsDataUrl(qrApiUrl);
-
-
+  qrImg = await loadImageAsDataUrl(qrApiUrl);
 
 } catch (e) {
-  alert("QR error: " + e.message);
-  console.error("Could not add QR code", e);
+  console.warn("Could not add QR code", e);
 }
 
   const rows = SCHEDULE.map(r => [
@@ -465,22 +464,24 @@ doc.addImage(
 );
 
 // QR code
-doc.addImage(
-  qrImg,
-  "PNG",
-  50,
-  finalY + 10,
-  35,
-  35
-);
+if (qrImg) {
+  doc.addImage(
+    qrImg,
+    "PNG",
+    50,
+    finalY + 10,
+    35,
+    35
+  );
 
-doc.setFontSize(7);
-doc.setTextColor(80, 80, 80);
-doc.text(
-  "Skanna fyri skrá",
-  50,
-  finalY + 48
-);
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text(
+    "Skanna fyri skrá",
+    50,
+    finalY + 48
+  );
+}
 
 
   
