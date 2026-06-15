@@ -16,20 +16,24 @@ let SCHEDULE = [];
 function getParams() {
   const p = new URLSearchParams(window.location.search);
 
-  const teamsFromUrl = (p.get("teams") || "")
+  const teamsRaw = decodeURIComponent(p.get("teams") || "");
+
+  const teamsFromUrl = teamsRaw
     .split("|")
     .map(x => x.trim())
     .filter(Boolean);
 
-  const competitionFromUrl = p.get("competition") || "";
-  const venueFromUrl = p.get("venue") || "";
+  const competitionFromUrl = decodeURIComponent(p.get("competition") || "");
+  const venueFromUrl = decodeURIComponent(p.get("venue") || "");
 
   if (competitionFromUrl) {
     document.getElementById("competitionName").value = competitionFromUrl;
+    document.getElementById("competitionTitle").textContent = competitionFromUrl;
   }
 
   if (venueFromUrl) {
     document.getElementById("venue").value = venueFromUrl;
+    document.getElementById("competitionVenue").textContent = venueFromUrl;
   }
 
   if (teamsFromUrl.length > 0) {
