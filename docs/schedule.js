@@ -1,13 +1,24 @@
 const params = new URLSearchParams(window.location.search);
-const raw = params.get("data");
+const raw = params.get("d");
 
 if (!raw) {
   document.getElementById("scheduleList").innerHTML =
     "<p>Ongin skrá funnin.</p>";
   throw new Error("No schedule data");
 }
+const compact = JSON.parse(decodeURIComponent(raw));
 
-const data = JSON.parse(decodeURIComponent(raw));
+const data = {
+  competition: compact.c,
+  venue: compact.v,
+  matches: compact.m.map(x => ({
+    umfar: x[0],
+    tíð: x[1],
+    heimalið: x[2],
+    útilið: x[3],
+    vøllur: x[4]
+  }))
+};
 
 document.getElementById("competition").textContent = data.competition || "Kappingarskrá";
 document.getElementById("venue").textContent = data.venue ? `Vøllur: ${data.venue}` : "";
