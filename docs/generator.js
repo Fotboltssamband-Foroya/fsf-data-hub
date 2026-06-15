@@ -450,7 +450,7 @@ async function exportPDF() {
 
   try {
     const logo = await loadImageAsDataUrl("fsf-logo.png");
-    doc.addImage(logo, "PNG", 10, 250, 24, 30);
+    doc.addImage(logo, "PNG", 10, 200, 24, 30);
   } catch (e) {
     console.warn("Could not add FSF logo", e);
   }
