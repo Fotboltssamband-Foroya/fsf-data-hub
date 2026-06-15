@@ -13,18 +13,33 @@ const teams =
 
 let SCHEDULE = [];
 
+function safeDecode(value) {
+  let result = value || "";
+
+  for (let i = 0; i < 3; i++) {
+    try {
+      const decoded = decodeURIComponent(result);
+      if (decoded === result) break;
+      result = decoded;
+    } catch {
+      break;
+    }
+  }
+
+  return result;
+}
+
 function getParams() {
   const p = new URLSearchParams(window.location.search);
 
-  const teamsRaw = decodeURIComponent(p.get("teams") || "");
+  const competitionFromUrl = safeDecode(p.get("competition") || "");
+  const venueFromUrl = safeDecode(p.get("venue") || "");
+  const teamsRaw = safeDecode(p.get("teams") || "");
 
   const teamsFromUrl = teamsRaw
     .split("|")
     .map(x => x.trim())
     .filter(Boolean);
-
-  const competitionFromUrl = decodeURIComponent(p.get("competition") || "");
-  const venueFromUrl = decodeURIComponent(p.get("venue") || "");
 
   if (competitionFromUrl) {
     document.getElementById("competitionName").value = competitionFromUrl;
