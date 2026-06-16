@@ -526,3 +526,9 @@ tbody tr:hover td{
   gap:4px;
   color:var(--muted);
 }
+.infoIcon{
+  color:#8aa4ff;
+  cursor:help;
+  font-size:12px;
+  margin-left:4px;
+}
