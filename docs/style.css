@@ -526,16 +526,26 @@ tbody tr:hover td{
   gap:4px;
   color:var(--muted);
 }
+.checkboxSetting label{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  width:100%;
+}
+
+.checkboxSetting input{
+  margin:0;
+}
+
+.checkboxSetting strong{
+  white-space:normal;
+  line-height:1.2;
+}
+
 .infoIcon{
   color:#8aa4ff;
   cursor:help;
   font-size:12px;
-  margin-left:4px;
-}
-
-.checkboxSetting label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
 }
