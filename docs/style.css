@@ -494,7 +494,7 @@ tbody tr:hover td{
   margin-bottom:0;
 }
 
-.settingsGroup input,
+.settingsGroup input:not([type="checkbox"]),
 .settingsGroup select{
   width:100%;
 }
@@ -527,20 +527,22 @@ tbody tr:hover td{
   color:var(--muted);
 }
 .checkboxSetting label{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
+  display:flex;
   align-items:center;
   gap:8px;
   cursor:pointer;
   width:100%;
+  padding:8px 10px;
 }
 
-.checkboxSetting input{
+.checkboxSetting input[type="checkbox"]{
+  width:auto;
+  min-width:16px;
   margin:0;
 }
 
 .checkboxSetting strong{
-  white-space:normal;
+  flex:1;
   line-height:1.2;
 }
 
@@ -548,4 +550,5 @@ tbody tr:hover td{
   color:#8aa4ff;
   cursor:help;
   font-size:12px;
+  flex-shrink:0;
 }
