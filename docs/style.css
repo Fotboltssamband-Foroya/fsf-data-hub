@@ -464,29 +464,28 @@ tbody tr:hover td{
 .dash{
   color:#93a4c7;
 }
-
-.controls{
+.generatorPage .controls{
   display:grid;
   grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
   gap:16px;
   align-items:stretch;
 }
 
-.settingsGroup,
-.summaryGroup{
+.generatorPage .settingsGroup,
+.generatorPage .summaryGroup{
   border:1px solid var(--line);
   background:rgba(255,255,255,.035);
   border-radius:16px;
   padding:14px;
 }
 
-.settingsGroup h3{
+.generatorPage .settingsGroup h3{
   margin:0 0 12px;
   font-size:15px;
   color:var(--text);
 }
 
-.settingsGroup .setting{
+.generatorPage .settingsGroup .setting{
   margin-bottom:12px;
 }
 
@@ -499,34 +498,34 @@ tbody tr:hover td{
   width:100%;
 }
 
-.actionGroup{
+.generatorPage .actionGroup{
   display:flex;
   flex-direction:column;
   gap:10px;
 }
 
-.actionGroup button{
+.generatorPage .actionGroup button{
   width:100%;
 }
 
-.summaryGroup{
+.generatorPage .summaryGroup{
   display:flex;
   flex-direction:column;
   justify-content:center;
 }
 
-.summaryGroup h2{
+.generatorPage .summaryGroup h2{
   margin:0 0 10px;
   font-size:20px;
 }
 
-.summaryGroup .pdfInfo{
+.generatorPage .summaryGroup .pdfInfo{
   display:flex;
   flex-direction:column;
   gap:4px;
   color:var(--muted);
 }
-.checkboxSetting label{
+.generatorPage .checkboxSetting label{
   display:flex;
   align-items:center;
   gap:8px;
@@ -535,18 +534,18 @@ tbody tr:hover td{
   padding:8px 10px;
 }
 
-.checkboxSetting input[type="checkbox"]{
+.generatorPage .checkboxSetting input[type="checkbox"]{
   width:auto;
   min-width:16px;
   margin:0;
 }
 
-.checkboxSetting strong{
+.generatorPage .checkboxSetting strong{
   flex:1;
   line-height:1.2;
 }
 
-.infoIcon{
+.generatorPage .infoIcon{
   color:#8aa4ff;
   cursor:help;
   font-size:12px;
