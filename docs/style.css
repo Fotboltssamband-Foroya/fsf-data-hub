@@ -489,12 +489,12 @@ tbody tr:hover td{
   margin-bottom:12px;
 }
 
-.settingsGroup .setting:last-child{
+.generatorPage .settingsGroup .setting:last-child{
   margin-bottom:0;
 }
 
-.settingsGroup input:not([type="checkbox"]),
-.settingsGroup select{
+.generatorPage .settingsGroup input:not([type="checkbox"]),
+.generatorPage .settingsGroup select{
   width:100%;
 }
 
