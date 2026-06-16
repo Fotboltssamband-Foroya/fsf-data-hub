@@ -532,3 +532,10 @@ tbody tr:hover td{
   font-size:12px;
   margin-left:4px;
 }
+
+.checkboxSetting label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
