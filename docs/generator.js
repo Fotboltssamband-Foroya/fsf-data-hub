@@ -339,6 +339,55 @@ function scoreSchedule(rounds) {
   }, 0);
 }
 
+function teamGameCounts(rounds, teams) {
+  const counts = {};
+
+  teams.forEach(t => {
+    counts[t] = 0;
+  });
+
+  rounds.forEach(round => {
+    round.forEach(match => {
+      counts[match.home]++;
+      counts[match.away]++;
+    });
+  });
+
+  return counts;
+}
+
+function globalScheduleScore(rounds, teams, preferAvoidSameClub) {
+  const counts = teamGameCounts(rounds, teams);
+  const values = Object.values(counts);
+
+  const maxGames = Math.max(...values);
+  const minGames = Math.min(...values);
+
+  let sameClubMatches = 0;
+
+  rounds.forEach(round => {
+    sameClubMatches += roundBadness(round);
+  });
+
+  let score = 0;
+
+  if (preferAvoidSameClub) {
+    score += sameClubMatches * 100000;
+  }
+
+  score += (maxGames - minGames) * 50000;
+
+  values.forEach(v => {
+    score += Math.pow(v - average(values), 2) * 1000;
+  });
+
+  return score;
+}
+
+function average(arr) {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
 function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
   const fullRoundsPerCycle =
     teams.length % 2 === 0 ? teams.length - 1 : teams.length;
@@ -351,52 +400,69 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
       : fullTotalRounds;
 
   const baseRoundsPerCycle = Math.floor(wantedTotalRounds / cycles);
-  let extraRounds = wantedTotalRounds % cycles;
+  let extraRoundsTemplate = wantedTotalRounds % cycles;
 
-  const allRounds = [];
+  let bestSchedule = null;
+  let bestScore = Infinity;
 
-  for (let cycle = 0; cycle < cycles; cycle++) {
-    const roundsThisCycle =
-      baseRoundsPerCycle + (extraRounds > 0 ? 1 : 0);
+  for (let fullAttempt = 0; fullAttempt < 120; fullAttempt++) {
+    const allRounds = [];
+    let extraRounds = extraRoundsTemplate;
 
-    if (extraRounds > 0) extraRounds--;
+    for (let cycle = 0; cycle < cycles; cycle++) {
+      const roundsThisCycle =
+        baseRoundsPerCycle + (extraRounds > 0 ? 1 : 0);
 
-    let bestCycle = null;
-    let bestScore = Infinity;
+      if (extraRounds > 0) extraRounds--;
 
-    for (let attempt = 0; attempt < 80; attempt++) {
-      const cycleRounds = buildOneCycleSmart(
-        shuffle(teams),
-        roundsThisCycle,
-        preferAvoidSameClub
-      );
+      let bestCycle = null;
+      let bestCycleScore = Infinity;
 
-      if (cycleRounds.length !== roundsThisCycle) continue;
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const cycleRounds = buildOneCycleSmart(
+          shuffle(teams),
+          roundsThisCycle,
+          preferAvoidSameClub
+        );
 
-      const score = scoreSchedule(cycleRounds);
+        if (cycleRounds.length !== roundsThisCycle) continue;
 
-      if (score < bestScore) {
-        bestScore = score;
-        bestCycle = cycleRounds;
+        const score = scoreSchedule(cycleRounds);
+
+        if (score < bestCycleScore) {
+          bestCycleScore = score;
+          bestCycle = cycleRounds;
+        }
       }
+
+      const cycleRounds =
+        bestCycle || buildOneCycleSmart(teams, roundsThisCycle, preferAvoidSameClub);
+
+      cycleRounds.forEach(round => {
+        allRounds.push(
+          round.map(m => {
+            if (cycle % 2 === 1) {
+              return { home: m.away, away: m.home };
+            }
+            return m;
+          })
+        );
+      });
     }
 
-    const cycleRounds =
-      bestCycle || buildOneCycleSmart(teams, roundsThisCycle, preferAvoidSameClub);
+    const score = globalScheduleScore(
+      allRounds,
+      teams,
+      preferAvoidSameClub
+    );
 
-    cycleRounds.forEach(round => {
-      allRounds.push(
-        round.map(m => {
-          if (cycle % 2 === 1) {
-            return { home: m.away, away: m.home };
-          }
-          return m;
-        })
-      );
-    });
+    if (score < bestScore) {
+      bestScore = score;
+      bestSchedule = allRounds;
+    }
   }
 
-  return allRounds;
+  return bestSchedule;
 }
 
 function generate() {
