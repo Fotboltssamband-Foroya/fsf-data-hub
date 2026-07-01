@@ -226,52 +226,59 @@ function pairKey(a, b) {
   return [a, b].sort().join("||");
 }
 
-function getRoundCandidates(teams, usedPairs, limit = 500) {
-  const candidates = [];
+function makeCandidateRound(teams, usedPairs, byeCounts, avoidSameClub) {
+  let list = shuffle(teams);
+  let bye = null;
 
-  function build(list, matches, bye) {
-    if (candidates.length >= limit) return;
-
-    if (list.length === 0) {
-      candidates.push({ matches, bye });
-      return;
-    }
-
-    if (list.length === 1) {
-      candidates.push({ matches, bye: list[0] });
-      return;
-    }
-
-    const first = list[0];
-
-    for (let i = 1; i < list.length; i++) {
-      const second = list[i];
-      const key = pairKey(first, second);
-
-      if (usedPairs.has(key)) continue;
-
-      const rest = list.slice(1).filter((_, idx) => idx + 1 !== i);
-
-      build(
-        rest,
-        [...matches, { home: first, away: second }],
-        bye
-      );
-    }
+  if (list.length % 2 === 1) {
+    list.sort((a, b) => (byeCounts[a] || 0) - (byeCounts[b] || 0));
+    bye = list[0];
+    list = list.slice(1);
+    list = shuffle(list);
   }
 
-  build([...teams], [], null);
+  const matches = [];
 
-  return candidates;
+  while (list.length > 0) {
+    const home = list.shift();
+
+    const options = list
+      .map((away, index) => ({
+        away,
+        index,
+        used: usedPairs.has(pairKey(home, away)),
+        sameClub: clubName(home) === clubName(away)
+      }))
+      .filter(x => !x.used);
+
+    if (options.length === 0) return null;
+
+    options.sort((a, b) => {
+      if (avoidSameClub && a.sameClub !== b.sameClub) {
+        return a.sameClub ? 1 : -1;
+      }
+      return Math.random() - 0.5;
+    });
+
+    const chosen = options[0];
+    list.splice(chosen.index, 1);
+
+    matches.push({
+      home,
+      away: chosen.away
+    });
+  }
+
+  return { matches, bye };
 }
 
-function scoreRound(candidate, byeCounts) {
+function scoreCandidateRound(candidate, byeCounts, avoidSameClub) {
+  if (!candidate) return Infinity;
+
   let score = 0;
 
-  for (const match of candidate.matches) {
-    if (isSameClubMatch(match)) {
-      score += 10000;
-    }
+  if (avoidSameClub) {
+    score += candidate.matches.filter(isSameClubMatch).length * 10000;
   }
 
   if (candidate.bye) {
@@ -281,55 +288,67 @@ function scoreRound(candidate, byeCounts) {
   return score;
 }
 
-function buildOneCycle(teams, roundsNeeded, attemptNo) {
+function buildOneCycleSmart(teams, roundsNeeded, avoidSameClub) {
   const usedPairs = new Set();
   const byeCounts = {};
   const rounds = [];
 
   for (let r = 0; r < roundsNeeded; r++) {
-    const shuffled = shuffle(teams);
-    const candidates = getRoundCandidates(shuffled, usedPairs);
+    let best = null;
+    let bestScore = Infinity;
 
-    if (candidates.length === 0) break;
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const candidate = makeCandidateRound(
+        teams,
+        usedPairs,
+        byeCounts,
+        avoidSameClub
+      );
 
-    candidates.sort((a, b) => scoreRound(a, byeCounts) - scoreRound(b, byeCounts));
+      const score = scoreCandidateRound(
+        candidate,
+        byeCounts,
+        avoidSameClub
+      );
 
-    const bestFew = candidates.slice(0, 8);
-    const chosen = bestFew[attemptNo % bestFew.length];
+      if (score < bestScore) {
+        best = candidate;
+        bestScore = score;
+      }
+    }
 
-    chosen.matches.forEach(m => {
+    if (!best) break;
+
+    best.matches.forEach(m => {
       usedPairs.add(pairKey(m.home, m.away));
     });
 
-    if (chosen.bye) {
-      byeCounts[chosen.bye] = (byeCounts[chosen.bye] || 0) + 1;
+    if (best.bye) {
+      byeCounts[best.bye] = (byeCounts[best.bye] || 0) + 1;
     }
 
-    rounds.push(chosen.matches);
+    rounds.push(best.matches);
   }
 
   return rounds;
 }
 
 function scoreSchedule(rounds) {
-  let sameClub = 0;
-
-  rounds.forEach(round => {
-    sameClub += roundBadness(round);
-  });
-
-  return sameClub * 100000 + rounds.length;
+  return rounds.reduce((sum, round) => {
+    return sum + roundBadness(round);
+  }, 0);
 }
 
 function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
-  const fullRoundsPerCycle = teams.length % 2 === 0
-    ? teams.length - 1
-    : teams.length;
+  const fullRoundsPerCycle =
+    teams.length % 2 === 0 ? teams.length - 1 : teams.length;
 
   const fullTotalRounds = fullRoundsPerCycle * cycles;
-  const wantedTotalRounds = maxRounds && maxRounds < fullTotalRounds
-    ? maxRounds
-    : fullTotalRounds;
+
+  const wantedTotalRounds =
+    maxRounds && maxRounds < fullTotalRounds
+      ? maxRounds
+      : fullTotalRounds;
 
   const baseRoundsPerCycle = Math.floor(wantedTotalRounds / cycles);
   let extraRounds = wantedTotalRounds % cycles;
@@ -342,41 +361,38 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
 
     if (extraRounds > 0) extraRounds--;
 
-    let best = null;
+    let bestCycle = null;
     let bestScore = Infinity;
 
-    for (let attempt = 0; attempt < 300; attempt++) {
-      const candidate = buildOneCycle(
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const cycleRounds = buildOneCycleSmart(
         shuffle(teams),
         roundsThisCycle,
-        attempt
+        preferAvoidSameClub
       );
 
-      const score = preferAvoidSameClub
-        ? scoreSchedule(candidate)
-        : candidate.length;
+      if (cycleRounds.length !== roundsThisCycle) continue;
 
-      if (candidate.length === roundsThisCycle && score < bestScore) {
-        best = candidate;
+      const score = scoreSchedule(cycleRounds);
+
+      if (score < bestScore) {
         bestScore = score;
+        bestCycle = cycleRounds;
       }
     }
 
-    const cycleRounds = best || buildOneCycle(teams, roundsThisCycle, 0);
+    const cycleRounds =
+      bestCycle || buildOneCycleSmart(teams, roundsThisCycle, preferAvoidSameClub);
 
     cycleRounds.forEach(round => {
-      const adjustedRound = round.map(match => {
-        if (cycle % 2 === 1) {
-          return {
-            home: match.away,
-            away: match.home
-          };
-        }
-
-        return match;
-      });
-
-      allRounds.push(adjustedRound);
+      allRounds.push(
+        round.map(m => {
+          if (cycle % 2 === 1) {
+            return { home: m.away, away: m.home };
+          }
+          return m;
+        })
+      );
     });
   }
 
