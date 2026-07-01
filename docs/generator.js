@@ -168,7 +168,7 @@ function optimizeSameClubConcentration(teams, cycles) {
   return bestRounds;
 }
 
-function chooseBestRounds(rounds, maxRounds, preferAvoidSameClub) {
+function chooseBestRounds(rounds, maxRounds, preferAvoidSameClub, cycles) {
   if (!maxRounds || maxRounds >= rounds.length) {
     return rounds;
   }
@@ -177,23 +177,49 @@ function chooseBestRounds(rounds, maxRounds, preferAvoidSameClub) {
     return rounds.slice(0, maxRounds);
   }
 
-  const ranked = rounds.map((matches, index) => ({
-    index,
-    matches,
-    badness: roundBadness(matches)
-  }));
+  const roundsPerCycle = rounds.length / cycles;
+  const removeTotal = rounds.length - maxRounds;
 
-  ranked.sort((a, b) => {
-    if (a.badness !== b.badness) return a.badness - b.badness;
-    return a.index - b.index;
-  });
+  const removePerCycle = Math.floor(removeTotal / cycles);
+  let extraRemovals = removeTotal % cycles;
 
-  const chosenIndexes = ranked
-    .slice(0, maxRounds)
-    .map(r => r.index)
-    .sort((a, b) => a - b);
+  const keptRounds = [];
 
-  return chosenIndexes.map(i => rounds[i]);
+  for (let cycle = 0; cycle < cycles; cycle++) {
+    const start = cycle * roundsPerCycle;
+    const end = start + roundsPerCycle;
+    const cycleRounds = rounds.slice(start, end);
+
+    let removeCount = removePerCycle;
+
+    if (extraRemovals > 0) {
+      removeCount += 1;
+      extraRemovals -= 1;
+    }
+
+    const ranked = cycleRounds.map((matches, index) => ({
+      index,
+      matches,
+      badness: roundBadness(matches)
+    }));
+
+    ranked.sort((a, b) => {
+      if (a.badness !== b.badness) return b.badness - a.badness;
+      return a.index - b.index;
+    });
+
+    const removeIndexes = new Set(
+      ranked.slice(0, removeCount).map(r => r.index)
+    );
+
+    cycleRounds.forEach((matches, index) => {
+      if (!removeIndexes.has(index)) {
+        keptRounds.push(matches);
+      }
+    });
+  }
+
+  return keptRounds;
 }
 
 function generate() {
@@ -212,7 +238,12 @@ function generate() {
     ? optimizeSameClubConcentration(teams, cycles)
     : buildRoundRobinCycles(teams, cycles);
 
-  const selectedRounds = chooseBestRounds(allRounds, maxRounds, preferAvoidSameClub);
+  const selectedRounds = chooseBestRounds(
+  allRounds,
+  maxRounds,
+  preferAvoidSameClub,
+  cycles
+);
 
   SCHEDULE = [];
 
