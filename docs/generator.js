@@ -297,7 +297,7 @@ function buildOneCycleSmart(teams, roundsNeeded, avoidSameClub) {
     let best = null;
     let bestScore = Infinity;
 
-    for (let attempt = 0; attempt < 120; attempt++) {
+    for (let attempt = 0; attempt < 35; attempt++) {
       const candidate = makeCandidateRound(
         teams,
         usedPairs,
@@ -405,7 +405,8 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
   let bestSchedule = null;
   let bestScore = Infinity;
 
-  for (let fullAttempt = 0; fullAttempt < 120; fullAttempt++) {
+  // Keep this low so browser does not freeze
+  for (let fullAttempt = 0; fullAttempt < 25; fullAttempt++) {
     const allRounds = [];
     let extraRounds = extraRoundsTemplate;
 
@@ -415,28 +416,11 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
 
       if (extraRounds > 0) extraRounds--;
 
-      let bestCycle = null;
-      let bestCycleScore = Infinity;
-
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const cycleRounds = buildOneCycleSmart(
-          shuffle(teams),
-          roundsThisCycle,
-          preferAvoidSameClub
-        );
-
-        if (cycleRounds.length !== roundsThisCycle) continue;
-
-        const score = scoreSchedule(cycleRounds);
-
-        if (score < bestCycleScore) {
-          bestCycleScore = score;
-          bestCycle = cycleRounds;
-        }
-      }
-
-      const cycleRounds =
-        bestCycle || buildOneCycleSmart(teams, roundsThisCycle, preferAvoidSameClub);
+      const cycleRounds = buildOneCycleSmart(
+        shuffle(teams),
+        roundsThisCycle,
+        preferAvoidSameClub
+      );
 
       cycleRounds.forEach(round => {
         allRounds.push(
@@ -444,10 +428,15 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
             if (cycle % 2 === 1) {
               return { home: m.away, away: m.home };
             }
+
             return m;
           })
         );
       });
+    }
+
+    if (allRounds.length !== wantedTotalRounds) {
+      continue;
     }
 
     const score = globalScheduleScore(
@@ -462,7 +451,7 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
     }
   }
 
-  return bestSchedule;
+  return bestSchedule || buildRoundRobinCycles(teams, cycles).slice(0, wantedTotalRounds);
 }
 
 function generate() {
