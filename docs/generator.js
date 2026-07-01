@@ -222,6 +222,167 @@ function chooseBestRounds(rounds, maxRounds, preferAvoidSameClub, cycles) {
   return keptRounds;
 }
 
+function pairKey(a, b) {
+  return [a, b].sort().join("||");
+}
+
+function getRoundCandidates(teams, usedPairs, limit = 500) {
+  const candidates = [];
+
+  function build(list, matches, bye) {
+    if (candidates.length >= limit) return;
+
+    if (list.length === 0) {
+      candidates.push({ matches, bye });
+      return;
+    }
+
+    if (list.length === 1) {
+      candidates.push({ matches, bye: list[0] });
+      return;
+    }
+
+    const first = list[0];
+
+    for (let i = 1; i < list.length; i++) {
+      const second = list[i];
+      const key = pairKey(first, second);
+
+      if (usedPairs.has(key)) continue;
+
+      const rest = list.slice(1).filter((_, idx) => idx + 1 !== i);
+
+      build(
+        rest,
+        [...matches, { home: first, away: second }],
+        bye
+      );
+    }
+  }
+
+  build([...teams], [], null);
+
+  return candidates;
+}
+
+function scoreRound(candidate, byeCounts) {
+  let score = 0;
+
+  for (const match of candidate.matches) {
+    if (isSameClubMatch(match)) {
+      score += 10000;
+    }
+  }
+
+  if (candidate.bye) {
+    score += (byeCounts[candidate.bye] || 0) * 500;
+  }
+
+  return score;
+}
+
+function buildOneCycle(teams, roundsNeeded, attemptNo) {
+  const usedPairs = new Set();
+  const byeCounts = {};
+  const rounds = [];
+
+  for (let r = 0; r < roundsNeeded; r++) {
+    const shuffled = shuffle(teams);
+    const candidates = getRoundCandidates(shuffled, usedPairs);
+
+    if (candidates.length === 0) break;
+
+    candidates.sort((a, b) => scoreRound(a, byeCounts) - scoreRound(b, byeCounts));
+
+    const bestFew = candidates.slice(0, 8);
+    const chosen = bestFew[attemptNo % bestFew.length];
+
+    chosen.matches.forEach(m => {
+      usedPairs.add(pairKey(m.home, m.away));
+    });
+
+    if (chosen.bye) {
+      byeCounts[chosen.bye] = (byeCounts[chosen.bye] || 0) + 1;
+    }
+
+    rounds.push(chosen.matches);
+  }
+
+  return rounds;
+}
+
+function scoreSchedule(rounds) {
+  let sameClub = 0;
+
+  rounds.forEach(round => {
+    sameClub += roundBadness(round);
+  });
+
+  return sameClub * 100000 + rounds.length;
+}
+
+function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
+  const fullRoundsPerCycle = teams.length % 2 === 0
+    ? teams.length - 1
+    : teams.length;
+
+  const fullTotalRounds = fullRoundsPerCycle * cycles;
+  const wantedTotalRounds = maxRounds && maxRounds < fullTotalRounds
+    ? maxRounds
+    : fullTotalRounds;
+
+  const baseRoundsPerCycle = Math.floor(wantedTotalRounds / cycles);
+  let extraRounds = wantedTotalRounds % cycles;
+
+  const allRounds = [];
+
+  for (let cycle = 0; cycle < cycles; cycle++) {
+    const roundsThisCycle =
+      baseRoundsPerCycle + (extraRounds > 0 ? 1 : 0);
+
+    if (extraRounds > 0) extraRounds--;
+
+    let best = null;
+    let bestScore = Infinity;
+
+    for (let attempt = 0; attempt < 300; attempt++) {
+      const candidate = buildOneCycle(
+        shuffle(teams),
+        roundsThisCycle,
+        attempt
+      );
+
+      const score = preferAvoidSameClub
+        ? scoreSchedule(candidate)
+        : candidate.length;
+
+      if (candidate.length === roundsThisCycle && score < bestScore) {
+        best = candidate;
+        bestScore = score;
+      }
+    }
+
+    const cycleRounds = best || buildOneCycle(teams, roundsThisCycle, 0);
+
+    cycleRounds.forEach(round => {
+      const adjustedRound = round.map(match => {
+        if (cycle % 2 === 1) {
+          return {
+            home: match.away,
+            away: match.home
+          };
+        }
+
+        return match;
+      });
+
+      allRounds.push(adjustedRound);
+    });
+  }
+
+  return allRounds;
+}
+
 function generate() {
   const teams = document.getElementById("teamsInput").value
     .split("\n")
@@ -234,16 +395,14 @@ function generate() {
   const concentrateSameClub = document.getElementById("concentrateSameClub").checked;
   const preferAvoidSameClub = document.getElementById("preferAvoidSameClub").checked;
 
-  const allRounds = concentrateSameClub
-    ? optimizeSameClubConcentration(teams, cycles)
-    : buildRoundRobinCycles(teams, cycles);
-
-  const selectedRounds = chooseBestRounds(
-  allRounds,
+  const selectedRounds = buildBalancedCycles(
+  teams,
+  cycles,
   maxRounds,
-  preferAvoidSameClub,
-  cycles
+  preferAvoidSameClub
 );
+
+const allRounds = selectedRounds;
 
   SCHEDULE = [];
 
