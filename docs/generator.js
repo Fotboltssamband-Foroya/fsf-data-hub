@@ -375,10 +375,10 @@ function globalScheduleScore(rounds, teams, preferAvoidSameClub) {
     score += sameClubMatches * 100000;
   }
 
-  score += (maxGames - minGames) * 50000;
+  score += (maxGames - minGames) * 500000;
 
   values.forEach(v => {
-    score += Math.pow(v - average(values), 2) * 1000;
+    score += Math.pow(v - average(values), 2) * 50000;
   });
 
   return score;
