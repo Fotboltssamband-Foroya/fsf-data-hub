@@ -1,6 +1,7 @@
 let RAW = [];
 let DISPLAY = [];
 let VIEW = [];
+let TEMP_MATCHES = [];
 
 const TEAM_NAMES = [
   "07 Vestur","AB","B36","B68","B71","EB/Streymur","FC Hoyvík","FC Suðuroy",
@@ -259,7 +260,7 @@ function rebuildDisplayData() {
   const groupedMap = new Map();
   const singles = [];
 
-  for (const row of RAW) {
+  for (const row of [...RAW, ...TEMP_MATCHES]) {
     const competitionName = String(row.name ?? row.competitionType ?? "").trim();
     const dk = dateKey(row.matchDate);
     const facility = String(row.facility ?? "").trim();
@@ -759,6 +760,113 @@ function decodeHtml(s) {
   const txt = document.createElement("textarea");
   txt.innerHTML = s;
   return txt.value;
+}
+
+function toggleTempPanel() {
+  const panel = document.getElementById("tempPanel");
+  if (!panel) return;
+
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+function parseTempDate(dateText, timeText) {
+  const d = String(dateText || "").trim();
+  const t = String(timeText || "00:00").trim();
+
+  // accepts 20.09.2026 or 20/09/2026 or 2026-09-20
+  let year, month, day;
+
+  if (d.includes("-")) {
+    const parts = d.split("-");
+    year = Number(parts[0]);
+    month = Number(parts[1]);
+    day = Number(parts[2]);
+  } else {
+    const parts = d.split(/[./]/);
+    day = Number(parts[0]);
+    month = Number(parts[1]);
+    year = Number(parts[2]);
+  }
+
+  const [hour, minute] = t.split(":").map(Number);
+
+  return new Date(
+    year,
+    month - 1,
+    day,
+    hour || 0,
+    minute || 0
+  ).getTime();
+}
+
+function importTempMatches() {
+  const textarea = document.getElementById("tempPaste");
+  if (!textarea) return;
+
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  const lines = text
+    .split(/\r?\n/)
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const imported = [];
+
+  lines.forEach((line, index) => {
+    const cols = line.split("\t").map(x => x.trim());
+
+    if (cols.length < 7) {
+      console.warn("Skipped temporary row", index + 1, line);
+      return;
+    }
+
+    const [
+      competitionName,
+      round,
+      date,
+      time,
+      home,
+      away,
+      facility,
+      pitch = ""
+    ] = cols;
+
+    const matchDate = parseTempDate(date, time);
+
+    imported.push({
+      id: "TEMP",
+      competitionId: "TEMP",
+      name: competitionName,
+      competitionType: competitionName,
+      round,
+      matchDate,
+      matchDescription: `${home} - ${away} -:-`,
+      facility,
+      field: pitch,
+      matchStatus: "Temporary",
+      source: "Temporary",
+      isTemporary: true,
+      matchId: "",
+      tempId: `temp-${Date.now()}-${index}`
+    });
+  });
+
+  TEMP_MATCHES.push(...imported);
+
+  textarea.value = "";
+
+  rebuildDisplayData();
+  fillDynamicLists();
+  applyFilters();
+}
+
+function clearTempMatches() {
+  TEMP_MATCHES = [];
+
+  rebuildDisplayData();
+  fillDynamicLists();
+  applyFilters();
 }
 
 loadData();
