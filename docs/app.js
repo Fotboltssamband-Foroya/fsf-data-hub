@@ -273,7 +273,7 @@ function rebuildDisplayData() {
     const matchId = row.matchId;
     const competitionId = row.id ?? row.competitionId ?? "";
 
-    if (shouldGroupCompetition(competitionName)) {
+    if (!row.isTemporary && shouldGroupCompetition(competitionName)) {
       const compId = competitionId || competitionName;
       const timeKey = String(row.matchDate ?? "");
       const groupKey = `${compId}||${dk}||${timeKey}||${facility}||${source}`;
@@ -307,6 +307,7 @@ function rebuildDisplayData() {
       singles.push({
         competitionId,
         competitionName,
+        isTemporary: !!row.isTemporary,
         facility,
         pitchText: pitch,
         matchDate: row.matchDate,
@@ -691,7 +692,7 @@ function render() {
   thead.innerHTML = `<tr>${cols.map(c => `<th class="${c.className}">${c.label}</th>`).join("")}</tr>`;
 
   tbody.innerHTML = VIEW.map(r => `
-    <tr>
+    <tr class="${r.isTemporary ? "tempRow" : ""}">
       <td class="col-comp">${escapeHtml(r.competitionName || "")}</td>
       <td class="col-round">${escapeHtml(r.roundsText || "")}</td>
       <td class="col-match">${escapeHtml(r.matchText || "")}</td>
