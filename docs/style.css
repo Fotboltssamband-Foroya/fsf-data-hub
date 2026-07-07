@@ -551,3 +551,38 @@ tbody tr:hover td{
   font-size:12px;
   flex-shrink:0;
 }
+
+.tempPanel{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:12px;
+}
+
+.tempPanel h3{
+  margin:0 0 8px;
+}
+
+.tempPanel textarea{
+  width:100%;
+  min-height:140px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.05);
+  color:var(--text);
+  border-radius:12px;
+  padding:10px;
+  font-family:inherit;
+}
+
+.tempActions{
+  margin-top:10px;
+}
+
+.tempRow td{
+  background:rgba(250,204,21,.13) !important;
+}
+
+.tempRow:hover td{
+  background:rgba(250,204,21,.20) !important;
+}
