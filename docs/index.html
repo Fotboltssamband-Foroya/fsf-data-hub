@@ -16,7 +16,19 @@
     </header>
 
     <div class="controls"></div>
+<div id="tempPanel" class="tempPanel" style="display:none">
+  <h3>Temporary matches</h3>
 
+  <p class="sub">
+    Paste from Excel: Competition | Round | Date | Time | Home | Away | Stadium | Pitch
+  </p>
+
+  <textarea id="tempPaste" placeholder="Paste Excel rows here..."></textarea>
+
+  <div class="tempActions">
+    <button type="button" onclick="importTempMatches()">Import temporary matches</button>
+  </div>
+</div>
     <p id="note"></p>
 
     <div class="tableWrap">
