@@ -431,6 +431,8 @@ function buildControls() {
     <button type="button" onclick="applyFilters()">Apply</button>
     <button type="button" onclick="resetFilters()">Reset</button>
     <button type="button" onclick="downloadExcel()">Export Excel</button>
+<button type="button" onclick="toggleTempPanel()">Temporary matches</button>
+<button type="button" onclick="clearTempMatches()">Clear temporary</button>
   `;
 
   document.getElementById("sort1Field").value = "matchDate";
