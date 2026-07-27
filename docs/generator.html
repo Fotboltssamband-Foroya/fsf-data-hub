@@ -55,13 +55,13 @@
 
     <div class="setting">
       <label for="roundRobinType"><strong>Kappingarslag</strong></label>
-      <select id="roundRobinType">
+      <select id="roundRobinType" onchange="updateEventDayCards()">
         <option value="1">Single round robin</option>
         <option value="2">Double round robin</option>
         <option value="3">Triple round robin</option>
         <option value="4">Quadruple round robin</option>
       </select>
-      <small>Hvørt lið spælir eina, tvær ella tríggjar ferðir móti hvørjum mótstøðuliði.</small>
+      <small>Hvørt lið spælir eina, tvær, tríggjar ella fýra ferðir móti hvørjum mótstøðuliði.</small>
     </div>
 
     <div class="setting">
@@ -91,6 +91,12 @@
       <small>Steðgur millum umfør í minuttum.</small>
     </div>
   </div>
+
+  <div class="settingsGroup">
+    <h3>Event Days</h3>
+    <div id="eventDaysContainer"></div>
+  </div>
+
 <div class="settingsGroup">
   <h3>Stillingar</h3>
 
@@ -135,7 +141,7 @@
 </div>
 
     <p class="sub">Teams, one per line:</p>
-    <textarea id="teamsInput" style="width:100%;min-height:180px;border-radius:14px;padding:12px;"></textarea>
+    <textarea id="teamsInput" style="width:100%;min-height:180px;border-radius:14px;padding:12px;" oninput="updateTeamSelects()"></textarea>
 
     <p id="note"></p>
 
