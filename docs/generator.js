@@ -13,6 +13,10 @@ const teams =
 
 let SCHEDULE = [];
 
+// Event Days storage - persists all event data even when cards are hidden
+let EVENT_DAYS = [];
+let EVENT_DAYS_ARCHIVE = {};
+
 function safeDecode(value) {
   let result = value || "";
 
@@ -53,6 +57,138 @@ function getParams() {
 
   if (teamsFromUrl.length > 0) {
     document.getElementById("teamsInput").value = teamsFromUrl.join("\n");
+  }
+}
+
+function getEventDays() {
+  return EVENT_DAYS;
+}
+
+function updateEventDayCards() {
+  const roundRobinType = Number(document.getElementById("roundRobinType").value || 1);
+  const container = document.getElementById("eventDaysContainer");
+  
+  // Save all current values to archive before rebuilding
+  const currentEventDays = {};
+  document.querySelectorAll(".eventDayCard").forEach((card, idx) => {
+    currentEventDays[idx] = {
+      date: card.querySelector(`input[id="eventDate${idx}"]`)?.value || "",
+      stadium: card.querySelector(`input[id="eventStadium${idx}"]`)?.value || "",
+      hostTeam: card.querySelector(`select[id="eventHostTeam${idx}"]`)?.value || ""
+    };
+  });
+  
+  // Merge current visible values into archive
+  Object.assign(EVENT_DAYS_ARCHIVE, currentEventDays);
+  
+  // Clear container
+  container.innerHTML = "";
+  EVENT_DAYS = [];
+  
+  // Generate new cards, restoring from archive
+  for (let i = 0; i < roundRobinType; i++) {
+    const archivedValue = EVENT_DAYS_ARCHIVE[i] || {};
+    
+    const card = document.createElement("div");
+    card.className = "eventDayCard";
+    
+    card.innerHTML = `
+      <div class="eventDayCardContent">
+        <div class="eventDayTitle">Event Day ${i + 1}</div>
+        
+        <div class="eventDaySetting">
+          <label for="eventDate${i}"><strong>Date</strong></label>
+          <input 
+            id="eventDate${i}" 
+            type="date" 
+            value="${archivedValue.date || ""}"
+            onchange="updateEventDaysArray()"
+          >
+        </div>
+        
+        <div class="eventDaySetting">
+          <label for="eventStadium${i}"><strong>Stadium</strong></label>
+          <input 
+            id="eventStadium${i}" 
+            type="text" 
+            placeholder="e.g., Løkin"
+            value="${archivedValue.stadium || ""}"
+            oninput="updateEventDaysArray()"
+          >
+        </div>
+        
+        <div class="eventDaySetting">
+          <label for="eventHostTeam${i}"><strong>Host Team</strong></label>
+          <select 
+            id="eventHostTeam${i}"
+            onchange="updateEventDaysArray()"
+          >
+            <option value="">-- Select a team --</option>
+          </select>
+        </div>
+      </div>
+    `;
+    
+    container.appendChild(card);
+    EVENT_DAYS.push({
+      index: i,
+      date: archivedValue.date || "",
+      stadium: archivedValue.stadium || "",
+      hostTeam: archivedValue.hostTeam || ""
+    });
+  }
+  
+  // Update team dropdowns
+  updateTeamSelects();
+}
+
+function updateTeamSelects() {
+  const teamsInput = document.getElementById("teamsInput").value;
+  const teamsList = teamsInput
+    .split("\n")
+    .map(t => t.trim())
+    .filter(Boolean);
+  
+  const roundRobinType = Number(document.getElementById("roundRobinType").value || 1);
+  
+  // Update each event day's host team dropdown
+  for (let i = 0; i < roundRobinType; i++) {
+    const select = document.getElementById(`eventHostTeam${i}`);
+    if (!select) continue;
+    
+    select.innerHTML = '<option value="">-- Select a team --</option>';
+    
+    teamsList.forEach(team => {
+      const option = document.createElement("option");
+      option.value = team;
+      option.textContent = team;
+      select.appendChild(option);
+    });
+    
+    // Restore previous selection: try current select value first, then fall back to EVENT_DAYS
+    let valueToRestore = select.value || (EVENT_DAYS[i] ? EVENT_DAYS[i].hostTeam : "");
+    
+    if (valueToRestore && teamsList.includes(valueToRestore)) {
+      select.value = valueToRestore;
+    }
+  }
+  
+  updateEventDaysArray();
+}
+
+function updateEventDaysArray() {
+  const roundRobinType = Number(document.getElementById("roundRobinType").value || 1);
+  
+  for (let i = 0; i < roundRobinType; i++) {
+    const dateInput = document.getElementById(`eventDate${i}`);
+    const stadiumInput = document.getElementById(`eventStadium${i}`);
+    const hostTeamSelect = document.getElementById(`eventHostTeam${i}`);
+    
+    if (EVENT_DAYS[i]) {
+      EVENT_DAYS[i].date = dateInput?.value || "";
+      EVENT_DAYS[i].stadium = stadiumInput?.value || "";
+      EVENT_DAYS[i].hostTeam = hostTeamSelect?.value || "";
+    }
   }
 }
 
@@ -750,6 +886,7 @@ function loadImageAsDataUrl(url) {
 }
 
 getParams();
+updateEventDayCards();
 
 if (document.getElementById("teamsInput").value.trim()) {
   generate();
