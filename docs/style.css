@@ -479,6 +479,10 @@ tbody tr:hover td{
   padding:14px;
 }
 
+.generatorPage .settingsGroup:has(#eventDaysContainer){
+  grid-column:1 / -1;
+}
+
 .generatorPage .settingsGroup h3{
   margin:0 0 12px;
   font-size:15px;
@@ -585,4 +589,105 @@ tbody tr:hover td{
 
 .tempRow:hover td{
   background:rgba(250,204,21,.20) !important;
+}
+
+/* =========================
+   Event Days UI
+   ========================= */
+
+#eventDaysContainer{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+  gap:12px;
+}
+
+.eventDayCard{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  border-radius:14px;
+  overflow:hidden;
+  transition: background .15s ease;
+}
+
+.eventDayCard:hover{
+  background:rgba(255,255,255,.06);
+}
+
+.eventDayCardContent{
+  padding:12px;
+}
+
+.eventDayTitle{
+  margin:0 0 10px;
+  font-size:13px;
+  font-weight:600;
+  color:var(--text);
+  letter-spacing:.3px;
+}
+
+.eventDaySetting{
+  margin-bottom:10px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.eventDaySetting:last-child{
+  margin-bottom:0;
+}
+
+.eventDaySetting label{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:500;
+  letter-spacing:.2px;
+  display:block;
+  padding:0;
+  border:none;
+  background:none;
+  border-radius:0;
+}
+
+.eventDaySetting label:hover{
+  background:none;
+  border-color:transparent;
+}
+
+.eventDaySetting input[type="date"],
+.eventDaySetting input[type="text"],
+.eventDaySetting select{
+  width:100%;
+  min-width:0;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.05);
+  color:var(--text);
+  padding:8px 9px;
+  border-radius:10px;
+  outline:none;
+  font-size:13px;
+  font-family:inherit;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.eventDaySetting input[type="date"]:focus,
+.eventDaySetting input[type="text"]:focus,
+.eventDaySetting select:focus{
+  border-color:rgba(130,170,255,.55);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.eventDaySetting select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2393a4c7' d='M1 4l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 8px center;
+  padding-right:28px;
+}
+
+@media (max-width: 720px){
+  #eventDaysContainer{
+    grid-template-columns:1fr;
+  }
 }
