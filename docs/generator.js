@@ -536,12 +536,11 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
       : fullTotalRounds;
 
   const baseRoundsPerCycle = Math.floor(wantedTotalRounds / cycles);
-  let extraRoundsTemplate = wantedTotalRounds % cycles;
+  const extraRoundsTemplate = wantedTotalRounds % cycles;
 
   let bestSchedule = null;
   let bestScore = Infinity;
 
-  // Keep this low so browser does not freeze
   for (let fullAttempt = 0; fullAttempt < 25; fullAttempt++) {
     const allRounds = [];
     let extraRounds = extraRoundsTemplate;
@@ -550,7 +549,9 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
       const roundsThisCycle =
         baseRoundsPerCycle + (extraRounds > 0 ? 1 : 0);
 
-      if (extraRounds > 0) extraRounds--;
+      if (extraRounds > 0) {
+        extraRounds--;
+      }
 
       const cycleRounds = buildOneCycleSmart(
         shuffle(teams),
@@ -559,15 +560,24 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
       );
 
       cycleRounds.forEach(round => {
-        allRounds.push(
-          round.map(m => {
-            if (cycle % 2 === 1) {
-              return { home: m.away, away: m.home };
-            }
+        const adjustedMatches = round.map(match => {
+          if (cycle % 2 === 1) {
+            return {
+              home: match.away,
+              away: match.home
+            };
+          }
 
-            return m;
-          })
-        );
+          return {
+            home: match.home,
+            away: match.away
+          };
+        });
+
+        allRounds.push({
+          matches: adjustedMatches,
+          cycleIndex: cycle
+        });
       });
     }
 
@@ -575,8 +585,10 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
       continue;
     }
 
+    const plainRounds = allRounds.map(round => round.matches);
+
     const score = globalScheduleScore(
-      allRounds,
+      plainRounds,
       teams,
       preferAvoidSameClub
     );
@@ -587,7 +599,41 @@ function buildBalancedCycles(teams, cycles, maxRounds, preferAvoidSameClub) {
     }
   }
 
-  return bestSchedule || buildRoundRobinCycles(teams, cycles).slice(0, wantedTotalRounds);
+  if (bestSchedule) {
+    return bestSchedule;
+  }
+
+  // Fallback, while still preserving cycle information
+  const fallback = [];
+  let remaining = wantedTotalRounds;
+
+  for (let cycle = 0; cycle < cycles && remaining > 0; cycle++) {
+    const baseRounds = roundRobin(teams);
+    const roundsToUse = Math.min(baseRounds.length, remaining);
+
+    baseRounds.slice(0, roundsToUse).forEach(round => {
+      fallback.push({
+        cycleIndex: cycle,
+        matches: round.map(match => {
+          if (cycle % 2 === 1) {
+            return {
+              home: match.away,
+              away: match.home
+            };
+          }
+
+          return {
+            home: match.home,
+            away: match.away
+          };
+        })
+      });
+    });
+
+    remaining -= roundsToUse;
+  }
+
+  return fallback;
 }
 
 function generate() {
