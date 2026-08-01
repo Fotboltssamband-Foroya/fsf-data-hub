@@ -672,40 +672,43 @@ const breakMinutes =
 const [startHour, startMinute] =
   startTime.split(":").map(Number);
 
-selectedRounds.forEach((matches, roundIndex) => {
+updateEventDaysArray();
 
-  const roundStart =
-    new Date(
-      2000,
-      0,
-      1,
-      startHour,
-      startMinute +
-      roundIndex * (matchMinutes + breakMinutes)
-    );
+selectedRounds.forEach((round, roundIndex) => {
+  const event = EVENT_DAYS[round.cycleIndex] || {};
 
-  const roundTime =
-    roundStart.toLocaleTimeString(
-      "en-GB",
-      {
-        hour: "2-digit",
-        minute: "2-digit"
-      }
-    );
+  const roundStart = new Date(
+    2000,
+    0,
+    1,
+    startHour,
+    startMinute + roundIndex * (matchMinutes + breakMinutes)
+  );
 
-  matches.forEach((m, matchIndex) => {
-
-    SCHEDULE.push({
-      umfar: roundIndex + 1,
-      tíð: roundTime,
-      heimalið: m.home,
-      úrslit: "-",
-      útilið: m.away,
-      vøllur: String(matchIndex + 1)
-    });
-
+  const roundTime = roundStart.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit"
   });
 
+  round.matches.forEach((match, matchIndex) => {
+    const pitch = String(matchIndex + 1);
+
+    SCHEDULE.push({
+      eventDay: round.cycleIndex + 1,
+      date: event.date || "",
+      stadium: event.stadium || "",
+      hostTeam: event.hostTeam || "",
+
+      umfar: roundIndex + 1,
+      tíð: roundTime,
+      heimalið: match.home,
+      úrslit: "-",
+      útilið: match.away,
+
+      pitch,
+      vøllur: pitch
+    });
+  });
 });
 
   render(selectedRounds, allRounds.length);
@@ -725,14 +728,19 @@ function render(selectedRounds, totalRounds) {
     </tr>
   `).join("");
 
-  const keptRounds = selectedRounds ? selectedRounds.length : 0;
-  const sameClubRounds = selectedRounds
-    ? selectedRounds.map(roundBadness).filter(x => x > 0).length
-    : 0;
+ const sameClubRounds = selectedRounds
+  ? selectedRounds
+      .map(round => roundBadness(round.matches))
+      .filter(x => x > 0)
+      .length
+  : 0;
 
-  const sameClubMatches = selectedRounds
-    ? selectedRounds.reduce((sum, r) => sum + roundBadness(r), 0)
-    : 0;
+const sameClubMatches = selectedRounds
+  ? selectedRounds.reduce(
+      (sum, round) => sum + roundBadness(round.matches),
+      0
+    )
+  : 0;
 
  document.getElementById("pdfCompetition").textContent =
   document.getElementById("competitionName").value;
@@ -753,19 +761,45 @@ document.getElementById("pdfRounds").textContent =
 }
 
 function exportExcel() {
-  const ws = XLSX.utils.json_to_sheet(SCHEDULE.map(r => ({
-    "Umfar": r.umfar,
-"Tíð": r.tíð,
-"Heimalið": r.heimalið,
-"Úrslit": r.úrslit,
-"Útilið": r.útilið,
-"Vøllur": r.vøllur
-  })));
+  if (SCHEDULE.length === 0) {
+    alert("Ger kappingina áðrenn tú tekur Excel niður.");
+    return;
+  }
+
+  const excelRows = SCHEDULE.map(row => ({
+    "Kappingardagur": row.eventDay,
+    "Dato": row.date,
+    "Stadion": row.stadium,
+    "Vøllur": row.pitch,
+    "Umfar": row.umfar,
+    "Tíð": row.tíð,
+    "Heimalið": row.heimalið,
+    "Úrslit": row.úrslit,
+    "Útilið": row.útilið,
+    "Vertslið": row.hostTeam
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(excelRows);
+
+  ws["!cols"] = [
+    { wch: 15 },
+    { wch: 12 },
+    { wch: 24 },
+    { wch: 9 },
+    { wch: 9 },
+    { wch: 9 },
+    { wch: 24 },
+    { wch: 9 },
+    { wch: 24 },
+    { wch: 24 }
+  ];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Tournament");
 
-  const name = document.getElementById("competitionName").value || "tournament";
+  const name =
+    document.getElementById("competitionName").value || "tournament";
+
   XLSX.writeFile(wb, `${name}.xlsx`);
 }
 
