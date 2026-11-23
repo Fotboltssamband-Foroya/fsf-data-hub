@@ -1,0 +1,105 @@
+
+name: Test COMET incremental API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Test National and International APIs
+        env:
+          FSF_MATCHES_API_KEY: ${{ secrets.FSF_MATCHES_API_KEY }}
+          FSF_INT_MATCHES_API_KEY: ${{ secrets.FSF_INT_MATCHES_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          import time
+          import requests
+          from datetime import datetime, timezone
+
+          BASE = "https://comet.fsf.fo/data-backend/api/public/areports/run"
+
+          keys = {
+              "National": os.environ["FSF_MATCHES_API_KEY"],
+              "International": os.environ["FSF_INT_MATCHES_API_KEY"]
+          }
+
+          tests = [
+              ("Normal fetch", 25, None),
+              ("Changed in October", 250, "20261001000000"),
+              ("Changed in October, larger page", 1000, "20261001000000"),
+              ("Future date check", 25, "20300101000000")
+          ]
+
+          for source, key in keys.items():
+              print(f"\n===== {source} =====")
+
+              for label, size, changed_after in tests:
+                  url = f"{BASE}/0/{size}/"
+                  params = {}
+
+                  if changed_after:
+                      params["changedAfter"] = changed_after
+
+                  started = time.monotonic()
+
+                  try:
+                      response = requests.get(
+                          url,
+                          headers={"API_KEY": key},
+                          params=params,
+                          timeout=120
+                      )
+                      response.raise_for_status()
+                      data = response.json()
+
+                      rows = data.get("results", [])
+                      duration = time.monotonic() - started
+
+                      timestamps = [
+                          int(r["lastupdateddatetime"])
+                          for r in rows
+                          if isinstance(r.get("lastupdateddatetime"), (int, float))
+                      ]
+
+                      print(f"\n{label}")
+                      print(f"  Requested page size: {size}")
+                      print(f"  Total reported rows: {data.get('totalSize')}")
+                      print(f"  Returned rows: {len(rows)}")
+                      print(f"  Pages: {data.get('lastPage', -1) + 1}")
+                      print(f"  Response time: {duration:.2f}s")
+
+                      if timestamps:
+                          oldest = datetime.fromtimestamp(
+                              min(timestamps) / 1000, timezone.utc
+                          )
+                          newest = datetime.fromtimestamp(
+                              max(timestamps) / 1000, timezone.utc
+                          )
+                          print(f"  Oldest update: {oldest}")
+                          print(f"  Newest update: {newest}")
+
+                          if changed_after:
+                              cutoff = datetime.strptime(
+                                  changed_after, "%Y%m%d%H%M%S"
+                              ).replace(tzinfo=timezone.utc)
+                              if oldest <= cutoff:
+                                  print("  WARNING: Row older than cutoff!")
+
+                  except Exception as exc:
+                      print(f"  TEST FAILED: {type(exc).__name__}: {str(exc)[:200]}")
+          PY
